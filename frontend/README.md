@@ -17,7 +17,7 @@ control panels. It's built on:
 
 - React 19
 - TypeScript
-- Tailwind CSS v4
+- Tailwind CSS
 
 ### Quick Links
 
@@ -37,8 +37,6 @@ control panels. It's built on:
 - [HTML Version](https://github.com/TailAdmin/tailadmin-free-tailwind-dashboard-template)
 - [Next.js Version](https://github.com/TailAdmin/free-nextjs-admin-dashboard)
 - [Vue.js Version](https://github.com/TailAdmin/vue-tailwind-admin-dashboard)
-- [Angular Version](https://github.com/TailAdmin/free-angular-tailwind-dashboard)
-- [Laravel Version](https://github.com/TailAdmin/tailadmin-laravel)
 
 ## Installation
 
@@ -66,6 +64,8 @@ git clone https://github.com/TailAdmin/free-react-tailwind-admin-dashboard.git
    yarn install
    ```
 
+   > Use the `--legacy-peer-deps` flag, if you face issues while installing.
+
 2. Start the development server:
    ```bash
    npm run dev
@@ -84,7 +84,6 @@ template includes:
 - Tables and Charts(Line and Bar)
 - Authentication forms and input elements
 - Alerts, Dropdowns, Modals, Buttons and more
-- FAQ & Accordion, Testimonials, and Carousels
 - Can't forget Dark Mode 🕶️
 
 All components are built with React and styled using Tailwind CSS for easy customization.
@@ -94,25 +93,21 @@ All components are built with React and styled using Tailwind CSS for easy custo
 ### Free Version
 
 - 1 Unique Dashboard
-- 35+ dashboard components
+- 30+ dashboard components
 - 50+ UI elements
 - Basic Figma design files
 - Community support
 
 ### Pro Version
 
-- 7 Unique Dashboards: Analytics, Ecommerce, Marketing, CRM, SaaS, Stocks, Logistics (more coming soon)
-- 500+ dashboard components and UI elements
+- 5 Unique Dashboards: Analytics, Ecommerce, Marketing, CRM, Stocks (more coming soon)
+- 400+ dashboard components and UI elements
 - Complete Figma design file
 - Email support
 
 To learn more about pro version features and pricing, visit our [pricing page](https://tailadmin.com/pricing).
 
 ## Changelog
-
-### Version 2.1.0 - [Dec 30, 2025]
-
-- Resolved Date Picker positioning and input issues in Charts.
 
 ### Version 2.0.2 - [March 25, 2025]
 
