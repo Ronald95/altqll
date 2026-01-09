@@ -18,6 +18,7 @@ import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
+import PdfToScan from "./pages/Pdf_to_scanner";
 
 export default function App() {
   return (
@@ -51,6 +52,9 @@ export default function App() {
             {/* Charts */}
             <Route path="/line-chart" element={<LineChart />} />
             <Route path="/bar-chart" element={<BarChart />} />
+
+            {/* Pdf To Scan */}
+            <Route path="/pdf-to-scan" element={<PdfToScan />} />
           </Route>
 
           {/* Auth Layout */}
