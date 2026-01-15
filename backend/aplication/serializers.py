@@ -7,9 +7,15 @@ class CargoSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre', 'user', 'created_at', 'updated_at']
 
 class TrabajadorSerializer(serializers.ModelSerializer):
-    cargo = CargoSerializer(many=True, read_only=True)
-    cargo_ids = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Cargo.objects.all(), write_only=True, source='cargo'
+    # Lectura: devuelve el objeto Cargo completo
+    cargo_data = CargoSerializer(source='cargo', read_only=True)
+
+    # Escritura: solo se envía el ID del Cargo
+    cargo = serializers.PrimaryKeyRelatedField(
+        queryset=Cargo.objects.all(),
+        write_only=True,
+        allow_null=True,  # porque cargo puede ser null
+        required=False
     )
 
     class Meta:
@@ -22,8 +28,8 @@ class TrabajadorSerializer(serializers.ModelSerializer):
             'correo',
             'telefono',
             'estado',
-            'cargo',
-            'cargo_ids',
+            'cargo',       # write_only
+            'cargo_data',  # read_only
             'created_at',
             'updated_at',
         ]

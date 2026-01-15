@@ -8,8 +8,8 @@ class Trabajador(models.Model):
         ('activo', 'Activo'),
         ('inactivo', 'Inactivo'),
     ]
-    rut = models.CharField("RUT", max_length=12, unique=True,blank=True, null=True)
-    cargo = models.ManyToManyField(Cargo, related_name="trabajadores", blank=True)    
+    rut = models.CharField("RUT", max_length=12, unique=True, blank=True, null=True)
+    cargo = models.ForeignKey(Cargo, related_name="trabajadores", on_delete=models.SET_NULL, null=True, blank=True)
     nombre = models.CharField("Nombre completo", max_length=255)
     residencia = models.CharField("Lugar de residencia", max_length=255, blank=True, null=True)
     correo = models.EmailField("Correo electrónico", blank=True, null=True)

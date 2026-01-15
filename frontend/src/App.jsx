@@ -19,6 +19,7 @@ import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import PdfToScan from "./pages/Pdf_to_scanner";
+import Index from "./pages/Trabajadores/Index";
 
 export default function App() {
   return (
@@ -55,6 +56,9 @@ export default function App() {
 
             {/* Pdf To Scan */}
             <Route path="/pdf-to-scan" element={<PdfToScan />} />
+
+            {/* Trabajadores */}
+            <Route path="/trabajadores" element={<Index />} />
           </Route>
 
           {/* Auth Layout */}

@@ -26,6 +26,13 @@ const othersItems = [
       { name: "PDF A SCAN", path: "/pdf-to-scan", pro: false },
     ],
   },
+  {
+    icon: <PieChartIcon />,
+    name: "Trabajadores",
+    subItems: [
+      { name: "Listado", path: "/trabajadores", pro: false },
+    ],
+  },
 ];
 
 const AppSidebar = () => {
