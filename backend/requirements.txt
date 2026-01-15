@@ -5,3 +5,6 @@ python-decouple==3.8
 sqlparse==0.5.5
 tzdata==2025.3
 gunicorn
+python-dotenv==1.0.0
+psycopg2-binary
+dj-database-url
