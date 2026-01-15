@@ -103,7 +103,7 @@ export default function Index() {
             <div>
               <h1 className="text-2xl font-bold">Trabajadores</h1>
               <p className="text-blue-100 text-sm">
-                Listado de trabajadores registrados
+                Listado de trabajadores 
               </p>
             </div>
           </div>
