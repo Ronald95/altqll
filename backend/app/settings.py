@@ -143,6 +143,13 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 
+# Archivos estáticos y media
+STATIC_URL = "/static/"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+POPPLER_PATH = config('POPPLER_PATH', default=None)  # ej: /usr/bin/poppler
+
 CORS_ALLOWED_ORIGINS = [
     # Producción
     "https://altqll.vercel.app",
@@ -153,3 +160,4 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # si usas cookies
+

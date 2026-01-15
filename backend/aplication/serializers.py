@@ -33,3 +33,11 @@ class TrabajadorSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
+
+class PDFUploadSerializer(serializers.Serializer):
+    archivo = serializers.FileField()
+
+    def validate_archivo(self, value):
+        if value.content_type not in ["application/pdf"]:
+            raise serializers.ValidationError("El archivo debe ser un PDF.")
+        return value
