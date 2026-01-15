@@ -8,7 +8,7 @@ import DeleteConfirmModal from "../../components/ui/modal/dialog/DeleteConfirm";
 import FormTrabajadores from "../../components/ui/modal/trabajadores/FormTrabajadores";
 import FormMatriculas from "../../components/ui/modal/trabajadores/FormMatriculas";
 
-export default function Index() {
+export default function Trabajador_Index() {
   const [trabajadores, setTrabajadores] = useState([]);
   const [naveInfo, setNaveInfo] = useState(null);
   const [loading, setLoading] = useState(true);
