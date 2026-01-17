@@ -7,6 +7,7 @@ import TrabajadoresAPI from "../../api/trabajadores";
 import DeleteConfirmModal from "../../components/ui/modal/dialog/DeleteConfirm"; // <-- IMPORTANTE
 import FormTrabajadores from "../../components/ui/modal/trabajadores/FormTrabajadores";
 import FormMatriculas from "../../components/ui/modal/trabajadores/FormMatriculas";
+import FormDetalleTrabajador from "../../components/ui/modal/trabajadores/FormDetalleTrabajador";
 
 export default function Trabajador_Index() {
   const [trabajadores, setTrabajadores] = useState([]);
@@ -155,7 +156,7 @@ export default function Trabajador_Index() {
         onClose={closeModalTrabajador}
         className="max-w-3xl max-h-[90vh] mx-4"
       >
-        <FormMatriculas
+        <FormDetalleTrabajador
           isOpen={isOpenModalTrabajador}
           item={editingItem}
           onClose={closeModalTrabajador}

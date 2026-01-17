@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from aplication.models import Trabajador, Cargo
+from aplication.models import Trabajador, Cargo, TipoMatricula, MatriculaTrabajador, MatriculaImagen
 
 class CargoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -41,3 +41,19 @@ class PDFUploadSerializer(serializers.Serializer):
         if value.content_type not in ["application/pdf"]:
             raise serializers.ValidationError("El archivo debe ser un PDF.")
         return value
+
+class TipoMatriculaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TipoMatricula
+        fields = ['id', 'nombre', 'user', 'created_at', 'updated_at']
+
+class MatriculaTrabajadorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MatriculaTrabajador
+        fields = ['id', 'trabajador', 'tipo', 'fecha', 'observacion', 'user', 'created_at', 'updated_at']
+
+class MatriculaImagenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MatriculaImagen
+        fields = ['id', 'matricula', 'imagen', 'user', 'created_at', 'updated_at']
+

@@ -148,7 +148,7 @@ STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-POPPLER_PATH = config('POPPLER_PATH', default=None)  # ej: /usr/bin/poppler
+POPPLER_PATH = config('POPPLER_PATH', default=None)  
 
 CORS_ALLOWED_ORIGINS = [
     # Producción

@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from aplication.models import Trabajador, Cargo
-from aplication.serializers import TrabajadorSerializer, CargoSerializer, PDFUploadSerializer
+from aplication.models import Trabajador, Cargo, TipoMatricula, MatriculaTrabajador, MatriculaImagen
+from aplication.serializers import TrabajadorSerializer, CargoSerializer, PDFUploadSerializer, TipoMatriculaSerializer, MatriculaTrabajadorSerializer, MatriculaImagenSerializer    
 from rest_framework.views import APIView
 from django.http import JsonResponse
 from rest_framework import status
@@ -25,6 +25,25 @@ class TrabajadorViewSet(viewsets.ModelViewSet):
     #permission_classes = [IsAuthenticated]
 
 
+class CargoViewSet(viewsets.ModelViewSet):
+    queryset = Cargo.objects.all().order_by('nombre')
+    serializer_class = CargoSerializer
+    #permission_classes = [IsAuthenticated]
+    
+class TipoMatriculaViewSet(viewsets.ModelViewSet):
+    queryset = TipoMatricula.objects.all().order_by('nombre')
+    serializer_class = TipoMatriculaSerializer
+    #permission_classes = [IsAuthenticated]
+
+class MatriculaImagenViewSet(viewsets.ModelViewSet):
+    queryset = MatriculaImagen.objects.all()
+    serializer_class = MatriculaImagenSerializer
+    #permission_classes = [IsAuthenticated]
+    
+class MatriculaViewSet(viewsets.ModelViewSet):
+    queryset = MatriculaTrabajador.objects.all()
+    serializer_class = MatriculaTrabajadorSerializer
+    #permission_classes = [IsAuthenticated]
 # ================================
 # Vista para procesar PDF
 # ================================
