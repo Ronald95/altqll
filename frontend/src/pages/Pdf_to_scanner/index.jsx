@@ -4,6 +4,7 @@ import PDF_SCAN from "../../api/pdf_scan";
 import Label from "../../components/form/Label";
 import { Upload } from "lucide-react";
 import toast from "react-hot-toast";
+import { API_URL } from "../../utils/auth";
 
 export default function Index() {
   const {
@@ -33,7 +34,7 @@ export default function Index() {
 
       if (resp?.file) {
         const filePath = `/media/${resp.file}`;
-        const fullUrl = "http://localhost:8000" + filePath;
+        const fullUrl = `${API_URL}${filePath}`;
 
         setDownloadUrl(fullUrl);
         setProcessedFileName(resp.file);

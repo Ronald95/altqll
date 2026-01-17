@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Configuración y constantes
-const API_URL = import.meta.env?.VITE_API_URL || "http://localhost:8000";
+export const API_URL = import.meta.env?.VITE_API_URL || "http://localhost:8000";
 
 const ENDPOINTS = {
   LOGIN: '/api/login/',
