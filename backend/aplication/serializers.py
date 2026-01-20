@@ -68,6 +68,13 @@ class TrabajadorListSerializer(serializers.ModelSerializer):
         model = Trabajador
         # Solo campos básicos
         fields = ['id', 'rut', 'nombre', 'fecha_nacimiento', 'correo', 'telefono', 'estado']
+    def get_fields(self):
+        fields = super().get_fields()
+        # Si no estamos en DEBUG (producción), eliminamos correo y teléfono
+        if not settings.DEBUG:
+            fields.pop('correo', None)
+            fields.pop('telefono', None)
+        return fields
 
 class TrabajadorDetailSerializer(serializers.ModelSerializer):
     certificados = CertificadoSerializer(many=True, read_only=True)
