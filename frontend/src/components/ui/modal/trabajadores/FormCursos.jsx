@@ -6,7 +6,7 @@ import {
   Calendar,
 } from "lucide-react";
 import LoaderError from "../../../loading/LoaderError";
-import CursosAPI from "../../../../api/CURSOS";
+import CursosAPI from "../../../../api/cursos";
 import Input from "../../../form/input/InputField";
 import Label from "../../../form/Label";
 
