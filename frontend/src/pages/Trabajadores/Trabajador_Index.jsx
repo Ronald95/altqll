@@ -6,7 +6,6 @@ import TableTrabajadores from "../../components/ui/table/trabajadores/TableTraba
 import TrabajadoresAPI from "../../api/trabajadores";
 import DeleteConfirmModal from "../../components/ui/modal/dialog/DeleteConfirm"; // <-- IMPORTANTE
 import FormTrabajadores from "../../components/ui/modal/trabajadores/FormTrabajadores";
-import FormMatriculas from "../../components/ui/modal/trabajadores/FormMatriculas";
 import FormDetalleTrabajador from "../../components/ui/modal/trabajadores/FormDetalleTrabajador";
 
 export default function Trabajador_Index() {

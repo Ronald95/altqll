@@ -37,6 +37,27 @@ const TrabajadoresAPI = {
       throw error; // re-lanza para manejar en el componente
     }
   },
+async getTrabajadorId(id) {
+  try {
+    const response = await apiClient.get("/api/trabajadores/" + id + "/");
+
+    // Si es un array, devolverlo tal cual
+    if (Array.isArray(response.data)) {
+      return response.data[0] || null;
+    }
+
+    // Si es un objeto (retrieve), devolverlo directamente
+    if (typeof response.data === "object" && response.data !== null) {
+      return response.data;
+    }
+
+    throw new Error("Formato de datos inesperado");
+  } catch (error) {
+    console.error("Error al cargar trabajador:", error);
+    throw error;
+  }
+},
+
 
   /**
    * Obtener lista completa de trabajadores

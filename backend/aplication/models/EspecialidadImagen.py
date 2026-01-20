@@ -1,22 +1,22 @@
 
 import uuid
 from django.db import models
-from .MatriculaTrabajador import MatriculaTrabajador
+from .Especialidad import Especialidad
 from django.conf import settings
+import uuid
 
 
-
-class MatriculaImagen(models.Model):
-    matricula = models.ForeignKey(
-        MatriculaTrabajador,
-        related_name="imagenes",
+class EspecialidadImagen(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    especialidad = models.ForeignKey(
+        Especialidad,
+        related_name="imagenes_especialidad",
         on_delete=models.CASCADE
     )
 
     imagen = models.ImageField(
-        upload_to="matriculas/imagenes/"
+        upload_to="especialidades/imagenes/"
     )
-
     tipo = models.CharField(
         max_length=30,
         choices=[
@@ -25,17 +25,18 @@ class MatriculaImagen(models.Model):
             ("extra", "Extra"),
         ]
     )
-
     orden = models.PositiveIntegerField(default=0)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,   
         on_delete=models.PROTECT,
-        related_name="imagenes_matriculas"
+        related_name="imagenes_especialidad",
+        null=True,
+        blank=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return self.tipo
     class Meta:
-        verbose_name = "Imagen de matrícula"
-        verbose_name_plural = "Imágenes de matrículas"
+        verbose_name = "Imagen de especialidad"
+        verbose_name_plural = "Imágenes de especialidades"

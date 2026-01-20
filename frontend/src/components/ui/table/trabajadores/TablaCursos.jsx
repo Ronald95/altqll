@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function TablaCursos({ trabajadorId }) {
+export default function TablaCursos({ data }) {
 
   return (
     <div className="overflow-x-auto">

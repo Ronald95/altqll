@@ -36,7 +36,6 @@ const TableTrabajadores = ({ data, onEdit, onDelete ,selectedItem }) => {
       (row) =>
         row.nombre?.toLowerCase().includes(text) ||
         row.rut?.toLowerCase().includes(text) ||
-        row.cargo?.toLowerCase().includes(text) ||
         row.correo?.toLowerCase().includes(text) ||
         row.telefono?.toLowerCase().includes(text)
     );
@@ -135,7 +134,7 @@ const TableTrabajadores = ({ data, onEdit, onDelete ,selectedItem }) => {
       sortable: true,
       cell: (row) => (
         <div className="flex items-center gap-3 py-2">
-          <div className="bg-gradient-to-br from-green-100 to-emerald-100 p-2.5 rounded-xl shadow-sm">
+          <div className="bg-lineargradient-to-br from-green-100 to-emerald-100 p-2.5 rounded-xl shadow-sm">
             <User className="h-4 w-4 text-green-600" />
           </div>
           <span className="font-semibold text-slate-800">
@@ -155,37 +154,13 @@ const TableTrabajadores = ({ data, onEdit, onDelete ,selectedItem }) => {
       sortable: true,
       cell: (row) => (
         <div className="flex items-center gap-3 py-2">
-          <div className="bg-gradient-to-br from-blue-100 to-cyan-100 p-2.5 rounded-xl shadow-sm">
+          <div className="bg-linear-gradient-to-br from-blue-100 to-cyan-100 p-2.5 rounded-xl shadow-sm">
             <CreditCard className="h-4 w-4 text-blue-600" />
           </div>
           <span className="font-medium text-slate-700">{row.rut || "—"}</span>
         </div>
       ),
     },
-  {
-  name: (
-    <div className="flex items-center gap-2">
-      <Briefcase className="h-4 w-4 text-green-600" />
-      <span>Cargo</span>
-    </div>
-  ),
-  selector: (row) => row.cargo_data?.nombre || "—",  // nombre del cargo
-  sortable: true,
-  width: "160px",
-  cell: (row) => (
-    <div className="flex items-center justify-center">
-      {row.cargo_data ? (
-        <span
-          className="px-3 py-1 rounded-lg border border-green-500 text-green-600 text-sm font-semibold"
-        >
-          {row.cargo_data.nombre}
-        </span>
-      ) : (
-        <span className="text-slate-400">—</span>
-      )}
-    </div>
-  ),
-},
 
     {
       name: (

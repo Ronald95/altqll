@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-export default function TablaMatriculas({ trabajadorId }) {
+export default function TablaEspecialidades({ trabajadorId }) {
 
   return (
     <div className="overflow-x-auto">

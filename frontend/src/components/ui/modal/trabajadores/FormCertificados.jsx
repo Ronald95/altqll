@@ -10,13 +10,13 @@ import {
   X,
 } from "lucide-react";
 import LoaderError from "../../../loading/LoaderError";
-import MatriculasAPI from "../../../../api/matriculas";
-import TiposMatriculaAPI from "../../../../api/tipo_matricula";
+import MatriculasAPI from "../../../../api/especialidades";
+import EspecialidadesAPI from "../../../../api/especialidades";
 import Input from "../../../form/input/InputField";
 import Label from "../../../form/Label";
-import ImageCropPolygon from "../../../ui/images/ImageCropPolygon";
+import ImageCropPolygon from "../../images/ImageCropPolygon";
 
-const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
+const FormCertificados = ({ isOpen, onClose, item, trabajador }) => {
   const {
     register,
     handleSubmit,
@@ -45,25 +45,25 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
 
 
 
-  // Cargar tipos de matrícula
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const fetchTipos = async () => {
-      setLoading(true);
-      try {
-        const data = await TiposMatriculaAPI.getForSelect();
-        setTipos(data);
-      } catch (err) {
-        console.error(err);
-        setError("No se pudieron cargar los tipos de matrícula.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTipos();
-  }, [isOpen]);
+    // Cargar tipos de matrícula
+    useEffect(() => {
+      if (!isOpen) return;
+  
+      const fetchTipos = async () => {
+        setLoading(true);
+        try {
+          const data = await EspecialidadesAPI.getCategoriasCertificadosForSelect();
+          setTipos(data);
+        } catch (err) {
+          console.error(err);
+          setError("No se pudieron cargar los tipos de matrícula.");
+        } finally {
+          setLoading(false);
+        }
+      };
+  
+      fetchTipos();
+    }, [isOpen]);
 
   // Editar matrícula
   useEffect(() => {
@@ -130,13 +130,24 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
 
   const isEdit = Boolean(item?.id);
 
+  useEffect(() => {
+  if (isOpen) {
+    document.body.style.overflow = "hidden";
+  } else {
+    document.body.style.overflow = "";
+  }
+  return () => {
+    document.body.style.overflow = "";
+  };
+}, [isOpen]);
+
   return (
     <LoaderError loading={loading} error={error}>
       <div className="bg-white">
         {/* Header */}
         <div className="bg-indigo-600 px-6 py-4 text-white rounded-t-xl">
           <h2 className="text-2xl font-bold">
-            {isEdit ? "Editar Matrícula" : "Nueva Matrícula"}
+            {isEdit ? "Actualizar Certificado" : "Nuevo Certificado"}
           </h2>
           <p className="text-indigo-100 text-sm">
             Trabajador: {trabajador?.nombre}
@@ -259,6 +270,6 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
   );
 };
 
-export default FormMatriculas;
+export default FormCertificados;
 
  

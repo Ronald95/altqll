@@ -1,38 +1,7 @@
 from rest_framework import serializers
-from aplication.models import Trabajador, Cargo, TipoMatricula, MatriculaTrabajador, MatriculaImagen
+from aplication.models import Trabajador, CategoriaCertificado, CategoriaEspecialidad, Especialidad, EspecialidadImagen, CategoriaCurso, Certificado, Curso
 
-class CargoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Cargo
-        fields = ['id', 'nombre', 'user', 'created_at', 'updated_at']
 
-class TrabajadorSerializer(serializers.ModelSerializer):
-    # Lectura: devuelve el objeto Cargo completo
-    cargo_data = CargoSerializer(source='cargo', read_only=True)
-
-    # Escritura: solo se envía el ID del Cargo
-    cargo = serializers.PrimaryKeyRelatedField(
-        queryset=Cargo.objects.all(),
-        write_only=True,
-        allow_null=True,  # porque cargo puede ser null
-        required=False
-    )
-
-    class Meta:
-        model = Trabajador
-        fields = [
-            'id',
-            'rut',
-            'nombre',
-            'residencia',
-            'correo',
-            'telefono',
-            'estado',
-            'cargo',       # write_only
-            'cargo_data',  # read_only
-            'created_at',
-            'updated_at',
-        ]
 
 class PDFUploadSerializer(serializers.Serializer):
     archivo = serializers.FileField()
@@ -42,18 +11,70 @@ class PDFUploadSerializer(serializers.Serializer):
             raise serializers.ValidationError("El archivo debe ser un PDF.")
         return value
 
-class TipoMatriculaSerializer(serializers.ModelSerializer):
+class CategoriaEspecialidadSerializer(serializers.ModelSerializer):
     class Meta:
-        model = TipoMatricula
-        fields = ['id', 'nombre', 'user', 'created_at', 'updated_at']
+        model = CategoriaEspecialidad
+        fields = ['id', 'codigo', 'nombre', 'user']
 
-class MatriculaTrabajadorSerializer(serializers.ModelSerializer):
+class CategoriaCertificadoSerializer(serializers.ModelSerializer):
     class Meta:
-        model = MatriculaTrabajador
-        fields = ['id', 'trabajador', 'tipo', 'fecha', 'observacion', 'user', 'created_at', 'updated_at']
+        model = CategoriaCertificado  
+        fields = ['id', 'codigo', 'nombre', 'user']
 
-class MatriculaImagenSerializer(serializers.ModelSerializer):
+class CategoriaCursoSerializer(serializers.ModelSerializer):
     class Meta:
-        model = MatriculaImagen
-        fields = ['id', 'matricula', 'imagen', 'user', 'created_at', 'updated_at']
+        model = CategoriaCurso
+        fields = ['id', 'codigo', 'nombre', 'user']
+
+class EspecialidadSerializer(serializers.ModelSerializer):
+    categoria = CategoriaEspecialidadSerializer(read_only=True)
+    trabajador = serializers.PrimaryKeyRelatedField(
+        queryset=Trabajador.objects.all(),  # Para create/update
+        write_only=True                     # No se muestra en GET
+    )
+    class Meta:
+        model = Especialidad
+        fields = ['id', 'trabajador', 'categoria', 'fecha_vigencia', 'observacion', 'user']
+
+class EspecialidadImagenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EspecialidadImagen
+        fields = ['id', 'especialidad', 'imagen', 'user']
+
+class CertificadoSerializer(serializers.ModelSerializer):
+    categoria = CategoriaCertificadoSerializer(read_only=True)
+    trabajador = serializers.PrimaryKeyRelatedField(
+        queryset=Trabajador.objects.all(),  # Para create/update
+        write_only=True                     # No se muestra en GET
+    )
+    class Meta:
+        model = Certificado
+        fields = ['id', 'trabajador', 'categoria', 'fecha_vigencia', 'user']
+
+class CursoSerializer(serializers.ModelSerializer):
+    categoria = CategoriaCursoSerializer(read_only=True)
+    trabajador = serializers.PrimaryKeyRelatedField(
+        queryset=Trabajador.objects.all(),  # Para create/update
+        write_only=True                     # No se muestra en GET
+    )
+    class Meta:
+        model = Curso
+        fields = ['id', 'trabajador', 'categoria', 'fecha_vigencia', 'user']
+
+
+
+class TrabajadorListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Trabajador
+        # Solo campos básicos
+        fields = ['id', 'rut', 'nombre', 'fecha_nacimiento', 'correo', 'telefono', 'estado']
+
+class TrabajadorDetailSerializer(serializers.ModelSerializer):
+    certificados = CertificadoSerializer(many=True, read_only=True)
+    cursos = CursoSerializer(many=True, read_only=True)
+    especialidades = EspecialidadSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Trabajador
+        fields = '__all__'
 

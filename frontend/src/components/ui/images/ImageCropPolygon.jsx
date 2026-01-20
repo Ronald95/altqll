@@ -204,7 +204,7 @@ const ImageCropPolygon = ({ imageFile, onCrop }) => {
   };
 
   const handleWheel = (e) => {
-    e.preventDefault();
+    //e.preventDefault();
     const pos = getMousePos(e);
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     const newZoom = Math.min(Math.max(zoom * delta, 0.1), 10);

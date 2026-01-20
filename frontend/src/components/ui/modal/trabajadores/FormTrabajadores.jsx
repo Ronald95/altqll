@@ -37,31 +37,10 @@ const FormTrabajadores = ({ isOpen, onClose, item, onItemUpdated }) => {
     mode: "onChange", // evita validaciones prematuras
   });
 
-  const [tipos, setTipos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  // Fetch cargos cuando el modal se abre
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const tiposList = await CargosApi.getCargosForSelect();
-        setTipos(tiposList);
-      } catch (err) {
-        console.error("Error al cargar cargos:", err);
-        setError("No se pudieron cargar los cargos.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [isOpen]);
 
 
   useEffect(() => {
@@ -70,9 +49,6 @@ const FormTrabajadores = ({ isOpen, onClose, item, onItemUpdated }) => {
       reset({
         nombre: item.nombre || "",
         rut: item.rut || "",
-        cargo: item.cargo_data
-          ? { value: item.cargo_data.id, label: item.cargo_data.nombre }
-          : null,
         correo: item.correo || "",
         telefono: item.telefono || "",
         observacion: item.observacion || "",
@@ -96,7 +72,6 @@ const FormTrabajadores = ({ isOpen, onClose, item, onItemUpdated }) => {
       const payload = {
         nombre: formData.nombre,
         rut: formData.rut,
-        cargo: formData.cargo?.value || formData.cargo,
         correo: formData.correo,
         telefono: formData.telefono,
         observacion: formData.observacion || "",
@@ -209,39 +184,6 @@ const FormTrabajadores = ({ isOpen, onClose, item, onItemUpdated }) => {
                   className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all outline-none"
                 />
                 {errors.rut && <p className="text-red-500 text-sm mt-1">{errors.rut.message}</p>}
-              </div>
-            </div>
-          </div>
-
-          {/* Información Laboral */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-5 pb-2 border-b-2 border-green-600">
-              <Briefcase className="w-5 h-5 text-green-600" />
-              <h3 className="text-xl font-semibold text-gray-800">Información Laboral</h3>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700 font-medium text-sm">
-                  <Briefcase className="w-4 h-4 text-green-600" />
-                  Cargo <span className="text-red-500">*</span>
-                </Label>
-                <Controller
-                  name="cargo"
-                  control={control}
-                  rules={{ required: "El cargo es obligatorio" }}
-                  render={({ field }) => (
-                    <SelectReact
-                      {...field}
-                      options={tipos}
-                      placeholder="Seleccione un cargo..."
-                      styles={customStyles}
-                      className="react-select-container"
-                      isClearable
-                    />
-                  )}
-                />
-                {errors.cargo && <p className="text-red-500 text-sm mt-1">{errors.cargo.message}</p>}
               </div>
             </div>
           </div>

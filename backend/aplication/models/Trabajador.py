@@ -1,6 +1,5 @@
 from django.db import models
 import uuid
-from .Cargo import Cargo
 
 class Trabajador(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -9,8 +8,8 @@ class Trabajador(models.Model):
         ('inactivo', 'Inactivo'),
     ]
     rut = models.CharField("RUT", max_length=12, unique=True, blank=True, null=True)
-    cargo = models.ForeignKey(Cargo, related_name="trabajadores", on_delete=models.SET_NULL, null=True, blank=True)
     nombre = models.CharField("Nombre completo", max_length=255)
+    fecha_nacimiento = models.DateField("Fecha de nacimiento", blank=True, null=True)
     residencia = models.CharField("Lugar de residencia", max_length=255, blank=True, null=True)
     correo = models.EmailField("Correo electrónico", blank=True, null=True)
     telefono = models.CharField("Teléfono", max_length=20, blank=True, null=True)

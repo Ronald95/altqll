@@ -20,6 +20,7 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import PdfToScan from "./pages/Pdf_to_scanner";
 import Trabajador_Index from "./pages/Trabajadores/Trabajador_Index";
+import ScanDocWeb from "./pages/Pdf_to_scanner/ScanDocWeb";
 
 export default function App() {
   return (
@@ -56,6 +57,7 @@ export default function App() {
 
             {/* Pdf To Scan */}
             <Route path="/pdf-to-scan" element={<PdfToScan />} />
+            <Route path="/scan-doc" element={<ScanDocWeb />} />
 
             {/* Trabajadores */}
             <Route path="/trabajadores" element={<Trabajador_Index />} />

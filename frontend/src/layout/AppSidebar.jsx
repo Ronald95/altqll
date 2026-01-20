@@ -24,6 +24,7 @@ const othersItems = [
     name: "Herramientas",
     subItems: [
       { name: "PDF A SCAN", path: "/pdf-to-scan", pro: false },
+      { name: "SCAN DOC", path: "/scan-doc", pro: false },
     ],
   },
   {
