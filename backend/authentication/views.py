@@ -647,7 +647,7 @@ class GlobalLogoutView(APIView):
 class VerifyAuthView(APIView):
     permission_classes = [IsAuthenticated]
     
-    def get(self, request):
+    def post(self, request):
         return Response({'status': 'authenticated'})
 
 

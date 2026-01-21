@@ -186,6 +186,7 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # si usas cookies
+CORS_ALLOW_ALL_ORIGINS = True # Aplica para desarrollo local
 
 # Usaremos django-storages
 #DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'

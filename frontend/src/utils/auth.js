@@ -74,7 +74,7 @@ export const authService = {
   async verifyAuth() {
     if (loggedOut) return false;
     try {
-      await apiClient.get(ENDPOINTS.VERIFY);
+      await apiClient.post(ENDPOINTS.VERIFY);
       return true;
     } catch (e) {
       if (loggedOut) return false;
