@@ -155,7 +155,7 @@ class SecureTokenObtainPairView(TokenObtainPairView):
         cookie_config = {
             'httponly': True,
             'secure': True,
-            'samesite': 'Strict',
+            'samesite': 'None',
             'domain': settings.SIMPLE_JWT.get('AUTH_COOKIE_DOMAIN')
         }
         
@@ -335,7 +335,7 @@ class SecureTokenRefreshView(TokenRefreshView):
                 expires=access_exp,
                 httponly=True,
                 secure=True,
-                samesite='Strict',
+                samesite='None',
                 path=settings.SIMPLE_JWT.get('AUTH_COOKIE_PATH', '/'),
                 domain=settings.SIMPLE_JWT.get('AUTH_COOKIE_DOMAIN')
             )
@@ -349,7 +349,7 @@ class SecureTokenRefreshView(TokenRefreshView):
                     expires=refresh_exp,
                     httponly=True,
                     secure=True,
-                    samesite='Strict',
+                    samesite='None',
                     path='/api/auth/',
                     domain=settings.SIMPLE_JWT.get('AUTH_COOKIE_DOMAIN')
                 )
@@ -561,7 +561,7 @@ class SecureLogoutView(APIView):
         cookie_config = {
             'path': '/',
             'domain': settings.SIMPLE_JWT.get('AUTH_COOKIE_DOMAIN'),
-            'samesite': settings.SIMPLE_JWT.get('AUTH_COOKIE_SAMESITE', 'Strict')
+            'samesite': settings.SIMPLE_JWT.get('AUTH_COOKIE_SAMESITE', 'None')
         }
         
         for cookie_name in cookies_to_clear:

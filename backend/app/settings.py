@@ -212,8 +212,10 @@ SIMPLE_JWT = {
     # Cookies JWT (httpOnly)
     'AUTH_COOKIE': 'access_token',
     'AUTH_COOKIE_REFRESH': 'refresh_token',
-    'AUTH_COOKIE_DOMAIN': None,
+    'AUTH_COOKIE_DOMAIN': None,  # si backend y frontend son dominios diferentes
     'AUTH_COOKIE_PATH': '/',
+    'AUTH_COOKIE_SAMESITE': 'None',  # ✅ cross-site
+    'AUTH_COOKIE_SECURE': True,      # ✅ obligatorio si samesite=None
     
     # Headers JWT como fallback
     'AUTH_HEADER_TYPES': ('Bearer',),
@@ -233,6 +235,7 @@ SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'authentication.serializers.CustomTokenObtainPairSerializer',
     'TOKEN_REFRESH_SERIALIZER': 'rest_framework_simplejwt.serializers.TokenRefreshSerializer',
 }
+
 
 # === CONFIGURACIÓN POR ENTORNO ===
 if DEBUG:
