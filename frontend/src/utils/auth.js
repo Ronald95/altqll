@@ -4,11 +4,11 @@ import axios from "axios";
 export const API_URL = import.meta.env?.VITE_API_URL || "http://localhost:8000";
 
 const ENDPOINTS = {
-  LOGIN: '/api/login/',
-  LOGOUT: '/api/logout/',
-  REFRESH: '/api/token/refresh/',
-  VERIFY: '/api/token/verify-auth/',
-  USER_DATA: '/api/home/'
+  LOGIN: '/api/auth/login/',
+  LOGOUT: '/api/auth/logout/',
+  REFRESH: '/api/auth/token/refresh/',
+  VERIFY: '/api/auth/token/verify-auth/',
+  USER_DATA: '/api/auth/home/'
 };
 
 const HTTP_STATUS = {

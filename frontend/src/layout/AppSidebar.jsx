@@ -8,13 +8,12 @@ import {
   PieChartIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
-import SidebarWidget from "./SidebarWidget";
 
 const navItems = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    path: "/profile",
+    path: "/home",
   },
 ];
 

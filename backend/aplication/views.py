@@ -23,7 +23,7 @@ from rest_framework.decorators import action
 
 class TrabajadorViewSet(viewsets.ModelViewSet):
     queryset = Trabajador.objects.all().order_by('nombre')
-
+    permission_classes = [IsAuthenticated]
     def get_serializer_class(self):
         if self.action == 'retrieve':  # detalle completo
             return TrabajadorDetailSerializer
@@ -33,41 +33,42 @@ class TrabajadorViewSet(viewsets.ModelViewSet):
 class CategoriaEspecialidadViewSet(viewsets.ModelViewSet):
     queryset = CategoriaEspecialidad.objects.all().order_by('nombre')
     serializer_class = CategoriaEspecialidadSerializer
-    #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
 class CategoriaCertificadoViewSet(viewsets.ModelViewSet):
     queryset = CategoriaCertificado.objects.all().order_by('nombre')
     serializer_class = CategoriaCertificadoSerializer
-    #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
 class CategoriaCursoViewSet(viewsets.ModelViewSet):
     queryset = CategoriaCurso.objects.all().order_by('nombre')
     serializer_class = CategoriaCursoSerializer
-    #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
 class EspecialidadImagenViewSet(viewsets.ModelViewSet):
     queryset = EspecialidadImagen.objects.all()
     serializer_class = EspecialidadImagenSerializer
-    #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     
 class EspecialidadViewSet(viewsets.ModelViewSet):
     queryset = Especialidad.objects.all()
     serializer_class = EspecialidadSerializer
-    #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
 
 class CertificadoViewSet(viewsets.ModelViewSet):
     queryset = Certificado.objects.all()
     serializer_class = CertificadoSerializer
-    #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 class CursoViewSet(viewsets.ModelViewSet):
     queryset = Curso.objects.all()
     serializer_class = CursoSerializer
-    #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 # ================================
 # Vista para procesar PDF
 # ================================
 class PDFProcessView(APIView):
+    permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):

@@ -15,6 +15,7 @@ from decouple import config
 from dotenv import load_dotenv
 import dj_database_url
 import os
+from datetime import timedelta
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -48,10 +49,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
     'corsheaders',
     'aplication',
-    'storages'
+    'storages',
+    'authentication.apps.AuthenticationConfig',
+    'rest_framework',
+    'rest_framework_simplejwt.token_blacklist'
 ]
 
 MIDDLEWARE = [
@@ -64,6 +67,27 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer'
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'authentication.authentication.JWTCookieAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+     "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+    ],
+    'DEFAULT_PAGINATION_CLASS': None,
+    #'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    #'PAGE_SIZE': 20
+}
 
 ROOT_URLCONF = 'app.urls'
 
@@ -174,3 +198,112 @@ CORS_ALLOW_CREDENTIALS = True  # si usas cookies
 #    'CacheControl': 'max-age=86400',
 #}
 #MEDIA_URL = f"{AWS_S3_ENDPOINT_URL}/object/{AWS_STORAGE_BUCKET_NAME}/"
+
+
+# === SIMPLE_JWT CONFIGURACIÓN BASE ===
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=10),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=2),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': False,
+    
+    # Cookies JWT (httpOnly)
+    'AUTH_COOKIE': 'access_token',
+    'AUTH_COOKIE_REFRESH': 'refresh_token',
+    'AUTH_COOKIE_DOMAIN': None,
+    'AUTH_COOKIE_PATH': '/',
+    
+    # Headers JWT como fallback
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    
+    # Algoritmo y claves
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': os.environ.get('JWT_SECRET_KEY', SECRET_KEY),
+    
+    # Claims
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'JTI_CLAIM': 'jti',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    
+    # Serializadores
+    'TOKEN_OBTAIN_SERIALIZER': 'authentication.serializers.CustomTokenObtainPairSerializer',
+    'TOKEN_REFRESH_SERIALIZER': 'rest_framework_simplejwt.serializers.TokenRefreshSerializer',
+}
+
+# === CONFIGURACIÓN POR ENTORNO ===
+if DEBUG:
+    print("🚀 Ejecutando en modo DESARROLLO")
+    
+    # --- Seguridad relajada para desarrollo ---
+    SECURE_SSL_REDIRECT = False
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+    
+    # --- Cookies de sesión para desarrollo ---
+    SESSION_COOKIE_SECURE = False
+    SESSION_COOKIE_SAMESITE = "Lax"
+    
+    # --- JWT Cookies para desarrollo ---
+    SIMPLE_JWT.update({
+        'AUTH_COOKIE_SECURE': False,      # HTTP OK en dev
+        'AUTH_COOKIE_HTTP_ONLY': True,    # Mantener httpOnly por seguridad
+        'AUTH_COOKIE_SAMESITE': 'Lax',    # Más permisivo en dev
+    })
+    
+    # --- CORS adicionales para desarrollo ---
+    CORS_ALLOWED_ORIGINS.extend([
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
+    ])
+
+else:
+    print("🔒 Ejecutando en modo PRODUCCIÓN")
+    
+    # --- Seguridad estricta para producción ---
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    
+    # --- Cookies seguras para producción ---
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Strict'
+    
+    # --- JWT Cookies para producción ---
+    SIMPLE_JWT.update({
+        'AUTH_COOKIE_SECURE': True,       # Solo HTTPS
+        'AUTH_COOKIE_HTTP_ONLY': True,    # httpOnly por seguridad
+        'AUTH_COOKIE_SAMESITE': 'Strict', # Máxima seguridad
+    })
+    
+    # --- CORS para producción (actualizar con tu dominio) ---
+    CORS_ALLOWED_ORIGINS = [
+        "https://tudominio.com",
+        "https://www.tudominio.com",
+        # Agregar tus dominios de producción
+    ]
+
+# === HEADERS DE SEGURIDAD ===
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+
+# === CONFIGURACIÓN DE UPLOADS ===
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_PERMISSIONS = 0o644
+
+# === RATE LIMITING ===
+RATE_LIMITS = {
+    'LOGIN_ATTEMPTS': 5,
+    'REFRESH_ATTEMPTS': 10,
+    'GLOBAL_LOGOUT_ATTEMPTS': 3,
+    'RATE_LIMIT_WINDOW': 900,  # 15 minutos
+}

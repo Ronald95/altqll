@@ -17,21 +17,40 @@ import FormElements from "./pages/Forms/FormElements";
 import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
-import Home from "./pages/Dashboard/Home";
 import PdfToScan from "./pages/Pdf_to_scanner";
 import Trabajador_Index from "./pages/Trabajadores/Trabajador_Index";
 import ScanDocWeb from "./pages/Pdf_to_scanner/ScanDocWeb";
+import ProtectedRoute from "./utils/ProtectedRoute";
+import Index from "./pages/Index";
+import Home from "./pages/Dashboard/Home";
+import { useAuth } from "./context/AuthContext";
 
 export default function App() {
+
+  const { loading } = useAuth(); // Usa el estado de carga del contexto
+    if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
   return (
     <>
       <Router>
         <ScrollToTop />
         <Routes>
           {/* Dashboard Layout */}
+          <Route index path="/" element={<Index />} />
+          <Route path="/signin" element={<SignIn />} />
+            <Route path="/signup" element={<SignUp />} />
           <Route element={<AppLayout />}>
-            <Route index path="/" element={<Home />} />
-
+           
+            
+            {/* Auth Layout */}
+            <Route element={<ProtectedRoute />}>
+           
+            <Route path="/home" element={<Home />} />
             {/* Others Page */}
             <Route path="/profile" element={<UserProfiles />} />
             <Route path="/calendar" element={<Calendar />} />
@@ -62,10 +81,8 @@ export default function App() {
             {/* Trabajadores */}
             <Route path="/trabajadores" element={<Trabajador_Index />} />
           </Route>
-
-          {/* Auth Layout */}
-          <Route path="/signin" element={<SignIn />} />
-          <Route path="/signup" element={<SignUp />} />
+</Route>
+          
 
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />

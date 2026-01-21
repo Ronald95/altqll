@@ -17,12 +17,12 @@ export default function AuthLayout({ children }) {
                 <img
                   width={231}
                   height={48}
-                  src="/images/logo/auth-logo.svg"
+                  src="/images/logo/log.svg"
                   alt="Logo"
                 />
               </Link>
               <p className="text-center text-gray-400 dark:text-white/60">
-                Free and Open-Source Tailwind CSS Admin Dashboard Template
+                Plataforma de control registro de documentos 
               </p>
             </div>
           </div>
