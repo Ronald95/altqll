@@ -185,9 +185,11 @@ CORS_ALLOWED_ORIGINS = [
     # Desarrollo local CRA
     "http://localhost:3000",
 ]
+CSRF_TRUSTED_ORIGINS = [
+    "https://altqll.vercel.app",
+]
 
-CORS_ALLOW_CREDENTIALS = True  # si usas cookies
-CORS_ALLOW_ALL_ORIGINS = True # Aplica para desarrollo local
+
 
 # Usaremos django-storages
 #DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
@@ -202,107 +204,89 @@ CORS_ALLOW_ALL_ORIGINS = True # Aplica para desarrollo local
 #MEDIA_URL = f"{AWS_S3_ENDPOINT_URL}/object/{AWS_STORAGE_BUCKET_NAME}/"
 
 
-# SECURITY
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_HSTS_SECONDS = 3600
+
+SECURE_SSL_REDIRECT = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
-SECURE_SSL_REDIRECT = True
+
+X_FRAME_OPTIONS = 'DENY'
+
 SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-CSRF_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'None'
 
-# SIMPLE JWT
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'None'
+
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False
+
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+
     'AUTH_COOKIE': 'access_token',
     'AUTH_COOKIE_REFRESH': 'refresh_token',
-    'AUTH_COOKIE_DOMAIN': None,  # o tu dominio en producción
+
+    'AUTH_COOKIE_SECURE': True,
+    'AUTH_COOKIE_HTTP_ONLY': True,
+    'AUTH_COOKIE_SAMESITE': 'None',
+
+    'AUTH_COOKIE_DOMAIN': None,
     'AUTH_COOKIE_PATH': '/',
+
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-# Rate limit para login
-MAX_LOGIN_ATTEMPTS = 5
-
-
-
-# === CONFIGURACIÓN POR ENTORNO ===
 if DEBUG:
-    print("🚀 Ejecutando en modo DESARROLLO")
-    
-    # --- Seguridad relajada para desarrollo ---
+    print("🚀 Ejecutando en DESARROLLO")
+
     SECURE_SSL_REDIRECT = False
     SECURE_HSTS_SECONDS = 0
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
-    
-    # --- Cookies de sesión para desarrollo ---
-    SESSION_COOKIE_SECURE = False
-    SESSION_COOKIE_SAMESITE = "Lax"
-    
-    # --- JWT Cookies para desarrollo ---
-    SIMPLE_JWT.update({
-        'AUTH_COOKIE_SECURE': False,      # HTTP OK en dev
-        'AUTH_COOKIE_HTTP_ONLY': True,    # Mantener httpOnly por seguridad
-        'AUTH_COOKIE_SAMESITE': 'Lax',    # Más permisivo en dev
-    })
-    
-    # --- CORS adicionales para desarrollo ---
-    CORS_ALLOWED_ORIGINS.extend([
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8000",
-    ])
 
-else:
-    print("🔒 Ejecutando en modo PRODUCCIÓN")
-    
-    # --- Seguridad estricta para producción ---
-    SECURE_SSL_REDIRECT = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    
-    # --- Cookies seguras para producción ---
-    SESSION_COOKIE_SECURE = True
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Strict'
-    
-    # --- JWT Cookies para producción ---
+    SESSION_COOKIE_SECURE = False
+    SESSION_COOKIE_SAMESITE = 'Lax'
+
+    CSRF_COOKIE_SECURE = False
+    CSRF_COOKIE_SAMESITE = 'Lax'
+
     SIMPLE_JWT.update({
-        'AUTH_COOKIE_SECURE': True,       # Solo HTTPS
-        'AUTH_COOKIE_HTTP_ONLY': True,    # httpOnly por seguridad
-        'AUTH_COOKIE_SAMESITE': 'Strict', # Máxima seguridad
+        'AUTH_COOKIE_SECURE': False,
+        'AUTH_COOKIE_SAMESITE': 'Lax',
     })
-    
-    # --- CORS para producción (actualizar con tu dominio) ---
+
     CORS_ALLOWED_ORIGINS = [
-        "https://tudominio.com",
-        "https://www.tudominio.com",
-        # Agregar tus dominios de producción
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:8000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8000",
     ]
 
-# === HEADERS DE SEGURIDAD ===
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = 'DENY'
 
-# === CONFIGURACIÓN DE UPLOADS ===
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
-FILE_UPLOAD_PERMISSIONS = 0o644
+else:
+    print("🔒 Ejecutando en PRODUCCIÓN")
 
-# === RATE LIMITING ===
+    # (todo ya está configurado arriba)
+    pass
+
+
+MAX_LOGIN_ATTEMPTS = 5
+
 RATE_LIMITS = {
     'LOGIN_ATTEMPTS': 5,
     'REFRESH_ATTEMPTS': 10,
     'GLOBAL_LOGOUT_ATTEMPTS': 3,
-    'RATE_LIMIT_WINDOW': 900,  # 15 minutos
+    'RATE_LIMIT_WINDOW': 900,
 }
