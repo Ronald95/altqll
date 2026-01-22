@@ -1,222 +1,313 @@
-
-# middleware.py - Middleware para validación y blacklist de tokens
-
 import logging
 import hashlib
+import threading
+from datetime import datetime, timedelta
 from django.core.cache import cache
 from django.conf import settings
 from django.http import JsonResponse
-from rest_framework_simplejwt.tokens import UntypedToken
+from django.utils.timezone import now
+from rest_framework_simplejwt.tokens import UntypedToken, RefreshToken, AccessToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 
 logger = logging.getLogger('security')
+audit_logger = logging.getLogger('auth_audit')
 
-class TokenBlacklistMiddleware:
-    """Middleware para verificar tokens blacklisted"""
-    
+# Rutas que NO requieren autenticación
+PUBLIC_PATHS = [
+    '/',
+    '/about',
+    '/contact',
+    '/signin',
+    '/register',
+    '/signup',
+    '/api/auth/login/',
+    '/api/auth/register/',
+    '/api/auth/token/',
+]
+
+class JWTEnterpriseMiddleware:
+    """
+    Middleware JWT Enterprise:
+    - Silent refresh con fingerprint de dispositivo
+    - Logout global de todas las sesiones de un usuario
+    - Rotación de refresh tokens en background
+    - Blacklist automático
+    - Gestión de sesión en cache
+    - Cookies cross-site seguras
+    - Auditoría y logging
+    """
+
+    ACCESS_REFRESH_THRESHOLD = timedelta(minutes=5)
+    REFRESH_REFRESH_THRESHOLD = timedelta(hours=6)
+
     def __init__(self, get_response):
         self.get_response = get_response
-    
+
     def __call__(self, request):
-        # Verificar blacklist antes de procesar request
-        if self.should_check_token(request):
-            if not self.validate_access_token(request):
-                return JsonResponse(
-                    {'error': 'Token has been invalidated'}, 
-                    status=401
-                )
+        path = request.path
         
+        # --- rutas públicas: no hacer nada ---
+        if self.is_public_path(path):
+            return self.get_response(request)
+
+        access_token = request.COOKIES.get(settings.SIMPLE_JWT.get('AUTH_COOKIE', 'access_token'))
+        refresh_token = request.COOKIES.get(settings.SIMPLE_JWT.get('AUTH_COOKIE_REFRESH', 'refresh_token'))
+        session_id = request.COOKIES.get('session_id')
+        fingerprint = self.get_device_fingerprint(request)
+
+        new_access_token = None
+        new_refresh_token = None
+
+        # --- Si no hay tokens, denegar acceso a rutas protegidas ---
+        if not access_token and not refresh_token:
+            return JsonResponse({
+                "error": "Authentication required",
+                "redirect": "/signin"
+            }, status=401)
+
+        # --- blacklist de access token ---
+        if access_token and self.is_blacklisted(access_token):
+            return JsonResponse({
+                "error": "Access token invalidated",
+                "redirect": "/signin"
+            }, status=401)
+
+        # --- Validar access token ---
+        access_valid = False
+        if access_token:
+            try:
+                access_obj = AccessToken(access_token)
+                access_exp = datetime.fromtimestamp(access_obj['exp'])
+                remaining_access = access_exp - datetime.utcnow()
+                
+                if remaining_access.total_seconds() > 0:
+                    access_valid = True
+                    # Silent refresh si está cerca de expirar
+                    if remaining_access < self.ACCESS_REFRESH_THRESHOLD and refresh_token:
+                        new_access_token = self.refresh_access_token(refresh_token, fingerprint, session_id)
+                else:
+                    logger.info("Access token expirado")
+            except (TokenError, InvalidToken) as e:
+                logger.warning(f"Access token inválido: {str(e)}")
+
+        # --- Si access token no es válido, intentar refresh ---
+        if not access_valid and refresh_token:
+            new_access_token = self.refresh_access_token(refresh_token, fingerprint, session_id)
+            if new_access_token:
+                access_valid = True
+            else:
+                return JsonResponse({
+                    "error": "Session expired",
+                    "redirect": "/signin"
+                }, status=401)
+
+        # --- Si aún no hay token válido, denegar ---
+        if not access_valid:
+            return JsonResponse({
+                "error": "Invalid authentication",
+                "redirect": "/signin"
+            }, status=401)
+
+        # --- rotación refresh token background ---
+        if refresh_token:
+            try:
+                refresh_obj = RefreshToken(refresh_token)
+                refresh_exp = datetime.fromtimestamp(refresh_obj['exp'])
+                remaining_refresh = refresh_exp - datetime.utcnow()
+                if remaining_refresh < self.REFRESH_REFRESH_THRESHOLD:
+                    new_refresh_token = self.rotate_refresh_token_bg(refresh_token, fingerprint, session_id)
+            except (TokenError, InvalidToken):
+                logger.warning("Refresh token inválido durante rotación background")
+
+        # --- actualizar sesión en cache ---
+        self.update_session(request, session_id, fingerprint)
+
+        # --- headers de seguridad ---
+        self.add_security_headers(request)
+
         response = self.get_response(request)
+
+        # --- set cookies si hay nuevos tokens ---
+        if new_access_token:
+            self.set_access_cookie(response, new_access_token)
+            audit_logger.info(f"Access token refreshed silently for IP {self.get_client_ip(request)}")
+
+        if new_refresh_token:
+            self.set_refresh_cookie(response, new_refresh_token)
+            audit_logger.info(f"Refresh token rotated silently for IP {self.get_client_ip(request)}")
+
+        self.enhance_response_security(response)
+
         return response
-    
-    def should_check_token(self, request):
-        """Determina si debe verificar el token"""
-        # Solo verificar en endpoints protegidos
-        protected_paths = ['/api/', '/admin/']  # Ajustar según tus rutas
-        return any(request.path.startswith(path) for path in protected_paths)
-    
-    def validate_access_token(self, request):
-        """Valida que el access token no esté en blacklist"""
+
+    def is_public_path(self, path):
+        """Verifica si la ruta es pública"""
+        # Coincidencia exacta
+        if path in PUBLIC_PATHS:
+            return True
+        # Coincidencia con prefijo (para rutas con parámetros)
+        for public_path in PUBLIC_PATHS:
+            if path.startswith(public_path.rstrip('/')):
+                return True
+        return False
+
+    # -------------------- blacklist --------------------
+    def is_blacklisted(self, access_token):
         try:
-            # Obtener token de cookie o header
-            access_token = request.COOKIES.get(
-                settings.SIMPLE_JWT.get('AUTH_COOKIE', 'access_token')
-            )
-            
-            if not access_token:
-                # Intentar obtener del header Authorization
-                auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-                if auth_header.startswith('Bearer '):
-                    access_token = auth_header.split(' ')[1]
-            
-            if not access_token:
-                return True  # No hay token, dejar que otros middleware manejen
-            
-            # Verificar si está en blacklist
             token_hash = hashlib.sha256(access_token.encode()).hexdigest()
             is_blacklisted = cache.get(f"blacklist_access:{token_hash}")
-            
             if is_blacklisted:
-                logger.warning(f"Blacklisted token attempt from IP: {self.get_client_ip(request)}")
-                return False
-            
-            return True
-            
+                logger.warning(f"Blacklisted token used from IP {self.get_client_ip()}")
+                return True
+            return False
         except Exception as e:
-            logger.error(f"Error validating token: {str(e)}")
-            return True  # En caso de error, permitir que continúe
-    
-    def get_client_ip(self, request):
-        """Obtiene IP del cliente"""
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0].strip()
-        else:
-            ip = request.META.get('REMOTE_ADDR')
-        return ip
+            logger.error(f"Error validando token blacklist: {str(e)}")
+            return False
 
+    # -------------------- refresh / rotation --------------------
+    def refresh_access_token(self, refresh_token, fingerprint, session_id):
+        try:
+            token = RefreshToken(refresh_token)
+            new_access = token.access_token
+            self.log_refresh(new_access, fingerprint, session_id)
+            return str(new_access)
+        except Exception as e:
+            logger.warning(f"Error refrescando access token: {str(e)}")
+            return None
 
-class SessionSecurityMiddleware:
-    """Middleware adicional para seguridad de sesiones"""
-    
-    def __init__(self, get_response):
-        self.get_response = get_response
-    
-    def __call__(self, request):
-        # Validaciones de seguridad adicionales
-        self.add_security_headers(request)
-        
-        response = self.get_response(request)
-        
-        # Agregar headers de seguridad al response
-        self.enhance_response_security(response)
-        
-        return response
-    
+    def rotate_refresh_token_bg(self, refresh_token, fingerprint, session_id):
+        """Nota: Retorna el nuevo token para actualizar la cookie"""
+        try:
+            old_token = RefreshToken(refresh_token)
+            new_token = old_token.rotate()
+            
+            # Blacklist del token antiguo (sin thread para evitar race conditions)
+            try:
+                old_token.blacklist()
+            except Exception as e:
+                logger.warning(f"Error blacklisting old refresh token: {str(e)}")
+            
+            self.log_refresh(new_token, fingerprint, session_id)
+            return str(new_token)
+        except Exception as e:
+            logger.warning(f"Error rotando refresh token: {str(e)}")
+            return None
+
+    # -------------------- session --------------------
+    def update_session(self, request, session_id, fingerprint):
+        if not session_id:
+            return
+        key = f"session:{session_id}"
+        session_data = cache.get(key) or {}
+        session_data.update({
+            'last_activity': now().isoformat(),
+            'ip_address': request.META.get('REMOTE_ADDR'),
+            'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+            'fingerprint': fingerprint
+        })
+        cache.set(key, session_data, timeout=7200)
+
+    # -------------------- device fingerprint --------------------
+    def get_device_fingerprint(self, request):
+        components = [
+            request.META.get('HTTP_USER_AGENT', ''),
+            request.META.get('HTTP_ACCEPT_LANGUAGE', ''),
+            request.META.get('HTTP_ACCEPT_ENCODING', '')
+        ]
+        fp_str = '|'.join(components)
+        return hashlib.sha256(fp_str.encode()).hexdigest()[:16]
+
+    def log_refresh(self, token, fingerprint, session_id):
+        try:
+            token_hash = hashlib.sha256(str(token).encode()).hexdigest()
+            key = f"refresh_log:{token_hash}"
+            data = {
+                'session_id': session_id,
+                'fingerprint': fingerprint,
+                'timestamp': now().isoformat()
+            }
+            cache.set(key, data, timeout=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds())
+            audit_logger.info(f"Refresh token logged: session={session_id}, fingerprint={fingerprint}")
+        except Exception as e:
+            logger.warning(f"Error logueando refresh: {str(e)}")
+
+    # -------------------- cookies --------------------
+    def set_access_cookie(self, response, access_token):
+        exp = now() + settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
+        response.set_cookie(
+            key=settings.SIMPLE_JWT.get('AUTH_COOKIE', 'access_token'),
+            value=access_token,
+            expires=exp,
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Lax' if settings.DEBUG else 'None',
+            domain=settings.SIMPLE_JWT.get('AUTH_COOKIE_DOMAIN'),
+            path=settings.SIMPLE_JWT.get('AUTH_COOKIE_PATH', '/')
+        )
+
+    def set_refresh_cookie(self, response, refresh_token):
+        exp = now() + settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME']
+        response.set_cookie(
+            key=settings.SIMPLE_JWT.get('AUTH_COOKIE_REFRESH', 'refresh_token'),
+            value=refresh_token,
+            expires=exp,
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Lax' if settings.DEBUG else 'None',
+            domain=settings.SIMPLE_JWT.get('AUTH_COOKIE_DOMAIN'),
+            path='/'
+        )
+
+    # -------------------- security --------------------
     def add_security_headers(self, request):
-        """Agrega validaciones de seguridad al request"""
-        # Validar tamaño de cookies para prevenir ataques
         if hasattr(request, 'COOKIES'):
-            total_cookie_size = sum(len(k) + len(v) for k, v in request.COOKIES.items())
-            if total_cookie_size > 4096:  # 4KB límite típico
-                logger.warning(f"Oversized cookies from IP: {self.get_client_ip(request)}")
-        
-        # Validar User-Agent para detectar bots maliciosos
-        user_agent = request.META.get('HTTP_USER_AGENT', '')
-        if self.is_suspicious_user_agent(user_agent):
-            logger.warning(f"Suspicious User-Agent: {user_agent[:100]}")
-    
+            total_size = sum(len(k)+len(v) for k,v in request.COOKIES.items())
+            if total_size > 4096:
+                logger.warning(f"Oversized cookies from IP {self.get_client_ip(request)}")
+        ua = request.META.get('HTTP_USER_AGENT', '')
+        if self.is_suspicious_user_agent(ua):
+            logger.warning(f"Suspicious User-Agent: {ua[:100]}")
+
     def enhance_response_security(self, response):
-        """Mejora la seguridad del response"""
-        # Headers de seguridad comunes
-        security_headers = {
+        headers = {
             'X-Content-Type-Options': 'nosniff',
             'X-Frame-Options': 'DENY',
             'X-XSS-Protection': '1; mode=block',
             'Referrer-Policy': 'strict-origin-when-cross-origin',
-            'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+            'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
         }
-        
-        for header, value in security_headers.items():
-            if header not in response:
-                response[header] = value
-        
-        # Cache control para endpoints sensibles
-        if hasattr(response, 'url') and '/api/auth/' in str(response.url):
-            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-            response['Pragma'] = 'no-cache'
-    
-    def is_suspicious_user_agent(self, user_agent):
-        """Detecta User-Agents sospechosos"""
-        if not user_agent or len(user_agent) < 10:
+        for k,v in headers.items():
+            if k not in response:
+                response[k] = v
+
+    def is_suspicious_user_agent(self, ua):
+        if not ua or len(ua) < 10:
             return True
-        
-        suspicious_patterns = [
-            'sqlmap', 'nmap', 'masscan', 'nessus', 'nikto',
-            'dirb', 'dirbuster', 'gobuster', 'wfuzz',
-            'burp', 'owasp'
-        ]
-        
-        user_agent_lower = user_agent.lower()
-        return any(pattern in user_agent_lower for pattern in suspicious_patterns)
-    
-    def get_client_ip(self, request):
-        """Obtiene IP del cliente"""
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0].strip()
+        suspicious = ['sqlmap','nmap','masscan','nessus','nikto','dirb','dirbuster','gobuster','wfuzz','burp','owasp']
+        ua_lower = ua.lower()
+        return any(p in ua_lower for p in suspicious)
+
+    def get_client_ip(self, request=None):
+        if not request:
+            return '0.0.0.0'
+        xff = request.META.get('HTTP_X_FORWARDED_FOR')
+        if xff:
+            ip = xff.split(',')[0].strip()
         else:
             ip = request.META.get('REMOTE_ADDR')
         return ip
 
-
-# Funciones utilitarias para usar en views
-class TokenSecurityUtils:
-    """Utilidades de seguridad para tokens"""
-    
+    # -------------------- logout global --------------------
     @staticmethod
-    def is_token_compromised(token, user_id=None):
-        """Verifica si un token puede estar comprometido"""
+    def global_logout(user):
         try:
-            # Decodificar token para obtener información
-            decoded_token = UntypedToken(token)
-            
-            # Verificar edad del token
-            issued_at = decoded_token.get('iat')
-            current_time = decoded_token.current_time
-            
-            if current_time - issued_at > 3600:  # Más de 1 hora
-                return True
-            
-            # Verificar otros indicadores de compromiso
-            # (implementar según necesidades)
-            
-            return False
-            
-        except (InvalidToken, TokenError):
-            return True
-    
-    @staticmethod
-    def log_token_usage(token_type, action, user_id=None, ip_address=None):
-        """Registra uso de tokens para auditoría"""
-        logger.info(f"Token {action}: type={token_type}, user={user_id}, ip={ip_address}")
-    
-    @staticmethod
-    def generate_csrf_token():
-        """Genera token CSRF adicional para protección extra"""
-        import secrets
-        return secrets.token_urlsafe(32)
-    
-    @staticmethod
-    def validate_request_fingerprint(request, stored_fingerprint):
-        """Valida fingerprint del request contra el almacenado"""
-        current_fingerprint = TokenSecurityUtils.generate_request_fingerprint(request)
-        return current_fingerprint == stored_fingerprint
-    
-    @staticmethod
-    def generate_request_fingerprint(request):
-        """Genera fingerprint único del request"""
-        import hashlib
-        
-        components = [
-            request.META.get('HTTP_USER_AGENT', ''),
-            request.META.get('HTTP_ACCEPT_LANGUAGE', ''),
-            request.META.get('HTTP_ACCEPT_ENCODING', ''),
-            # No incluir IP para usuarios móviles
-        ]
-        
-        fingerprint_string = '|'.join(components)
-        return hashlib.sha256(fingerprint_string.encode()).hexdigest()[:16]
-
-
-
-
-#class JWTAuthMiddleware:
-#    def __init__(self, get_response):
-#        self.get_response = get_response
-
-#    def __call__(self, request):
-#        token = request.COOKIES.get('access_token')
-#        if token:
-#            request.META['HTTP_AUTHORIZATION'] = f'Bearer {token}'
-#        return self.get_response(request)
+            tokens = OutstandingToken.objects.filter(user=user)
+            for token in tokens:
+                try:
+                    RefreshToken(token.token).blacklist()
+                except:
+                    pass
+            logger.info(f"Global logout completed for user {user.id}")
+        except Exception as e:
+            logger.warning(f"Error en global logout: {str(e)}")

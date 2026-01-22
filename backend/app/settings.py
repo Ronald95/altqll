@@ -66,6 +66,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'authentication.middleware.JWTEnterpriseMiddleware',  # <--- middleware actualizado personalizado
 ]
 
 REST_FRAMEWORK = {
@@ -201,40 +202,34 @@ CORS_ALLOW_ALL_ORIGINS = True # Aplica para desarrollo local
 #MEDIA_URL = f"{AWS_S3_ENDPOINT_URL}/object/{AWS_STORAGE_BUCKET_NAME}/"
 
 
-# === SIMPLE_JWT CONFIGURACIÓN BASE ===
+# SECURITY
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_HSTS_SECONDS = 3600
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SAMESITE = 'None'
+
+# SIMPLE JWT
+
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=10),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=2),
-    'ROTATE_REFRESH_TOKENS': False,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': False,
-    
-    # Cookies JWT (httpOnly)
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'AUTH_COOKIE': 'access_token',
     'AUTH_COOKIE_REFRESH': 'refresh_token',
-    'AUTH_COOKIE_DOMAIN': None,  # si backend y frontend son dominios diferentes
+    'AUTH_COOKIE_DOMAIN': None,  # o tu dominio en producción
     'AUTH_COOKIE_PATH': '/',
-    'AUTH_COOKIE_SAMESITE': 'None',  # ✅ cross-site
-    'AUTH_COOKIE_SECURE': True,      # ✅ obligatorio si samesite=None
-    
-    # Headers JWT como fallback
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-    
-    # Algoritmo y claves
-    'ALGORITHM': 'HS256',
-    'SIGNING_KEY': os.environ.get('JWT_SECRET_KEY', SECRET_KEY),
-    
-    # Claims
-    'TOKEN_TYPE_CLAIM': 'token_type',
-    'JTI_CLAIM': 'jti',
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
-    
-    # Serializadores
-    'TOKEN_OBTAIN_SERIALIZER': 'authentication.serializers.CustomTokenObtainPairSerializer',
-    'TOKEN_REFRESH_SERIALIZER': 'rest_framework_simplejwt.serializers.TokenRefreshSerializer',
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
 }
+
+# Rate limit para login
+MAX_LOGIN_ATTEMPTS = 5
+
 
 
 # === CONFIGURACIÓN POR ENTORNO ===
