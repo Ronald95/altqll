@@ -1,26 +1,28 @@
 """
-Django settings for app project.
+Django settings for app project (React + Django JWT via Authorization headers)
 """
 
 from pathlib import Path
 from decouple import config
 from dotenv import load_dotenv
-import os
 from datetime import timedelta
 
-# Load environment variables
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Security
+# ------------------------------------------------------------------------------
+# CORE
+# ------------------------------------------------------------------------------
 SECRET_KEY = config('SECRET_KEY', default='unsafe-secret-key')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
 
 AUTH_USER_MODEL = 'aplication.CustomUser'
 
-# Installed apps
+# ------------------------------------------------------------------------------
+# APPS
+# ------------------------------------------------------------------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -32,30 +34,37 @@ INSTALLED_APPS = [
     # Third-party
     'corsheaders',
     'rest_framework',
-    'rest_framework_simplejwt.token_blacklist',
-    'storages',
+    'csp',
 
-    # Local apps
+    # Local
     'aplication',
     'authentication.apps.AuthenticationConfig',
 ]
 
-# Middleware
+# ------------------------------------------------------------------------------
+# MIDDLEWARE (ORDEN CRÍTICO)
+# ------------------------------------------------------------------------------
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # must be first
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+
+    'django.middleware.csrf.CsrfViewMiddleware',  # no molesta aunque no lo uses
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+
+    'csp.middleware.CSPMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'authentication.middleware.JWTEnterpriseMiddleware',  # custom JWT middleware
 ]
 
 ROOT_URLCONF = 'app.urls'
+WSGI_APPLICATION = 'app.wsgi.application'
 
-# Templates
+# ------------------------------------------------------------------------------
+# TEMPLATES (ADMIN)
+# ------------------------------------------------------------------------------
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -71,9 +80,9 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'app.wsgi.application'
-
-# Database
+# ------------------------------------------------------------------------------
+# DATABASE
+# ------------------------------------------------------------------------------
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -86,135 +95,99 @@ DATABASES = {
     }
 }
 
-# Password validation
+# ------------------------------------------------------------------------------
+# AUTH / PASSWORDS
+# ------------------------------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',},
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# Internationalization
+# ------------------------------------------------------------------------------
+# I18N
+# ------------------------------------------------------------------------------
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static & Media
+# ------------------------------------------------------------------------------
+# STATIC
+# ------------------------------------------------------------------------------
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / "media"
-STATIC_ROOT = BASE_DIR / "staticfiles"
 
-POPPLER_PATH = config('POPPLER_PATH', default=None)  
-
-# Security headers
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = 'DENY'
-
-# Rate limits
-MAX_LOGIN_ATTEMPTS = 5
-RATE_LIMITS = {
-    'LOGIN_ATTEMPTS': 5,
-    'REFRESH_ATTEMPTS': 10,
-    'GLOBAL_LOGOUT_ATTEMPTS': 3,
-    'RATE_LIMIT_WINDOW': 900,
-}
-
-# REST Framework
+# ------------------------------------------------------------------------------
+# DJANGO REST + JWT (HEADERS)
+# ------------------------------------------------------------------------------
 REST_FRAMEWORK = {
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
-        'rest_framework.renderers.BrowsableAPIRenderer'
-    ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'authentication.authentication.JWTCookieAuthentication',
+    'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-    ],
-    "DEFAULT_FILTER_BACKENDS": [
-        "django_filters.rest_framework.DjangoFilterBackend",
-        "rest_framework.filters.SearchFilter",
-    ],
+    ),
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    ),
 }
 
-# JWT configuration
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'AUTH_COOKIE': 'access_token',
-    'AUTH_COOKIE_REFRESH': 'refresh_token',
-    'AUTH_COOKIE_DOMAIN': None,
-    'AUTH_COOKIE_PATH': '/',
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# CORS default settings
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOW_METHODS = [
-    "DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT",
-]
+# ------------------------------------------------------------------------------
+# CORS (JWT POR HEADERS → NO COOKIES)
+# ------------------------------------------------------------------------------
+CORS_ALLOW_CREDENTIALS = False
+CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 CORS_ALLOW_HEADERS = [
-    "accept", "accept-encoding", "authorization", "content-type",
-    "dnt", "origin", "user-agent", "x-csrftoken", "x-requested-with",
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "origin",
+    "user-agent",
+    "x-requested-with",
 ]
 
-# Environment-specific settings
+# ------------------------------------------------------------------------------
+# CSP (FORMATO NUEVO – SIN ERROR)
+# ------------------------------------------------------------------------------
+CONTENT_SECURITY_POLICY = {
+    "DIRECTIVES": {
+        "default-src": ["'self'"],
+        "script-src": ["'self'"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        "img-src": ["'self'", "data:", "https:"],
+        "font-src": ["'self'", "data:"],
+        "connect-src": ["'self'"],
+        "frame-ancestors": ["'none'"],
+    }
+}
+
+# ------------------------------------------------------------------------------
+# ENV
+# ------------------------------------------------------------------------------
 if DEBUG:
     print("🚀 Running in DEVELOPMENT mode")
-
-    # Local CORS & CSRF
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
     ]
-    CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS.copy()
-
-    # Cookies for dev
-    SESSION_COOKIE_SECURE = False
-    SESSION_COOKIE_SAMESITE = 'Lax'
-    CSRF_COOKIE_SECURE = False
-    CSRF_COOKIE_SAMESITE = 'Lax'
-    SIMPLE_JWT.update({
-        'AUTH_COOKIE_SECURE': False,
-        'AUTH_COOKIE_SAMESITE': 'Lax',
-    })
-
     SECURE_SSL_REDIRECT = False
-    SECURE_HSTS_SECONDS = 0
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-    SECURE_HSTS_PRELOAD = False
-
 else:
     print("🔒 Running in PRODUCTION mode")
-
-    # Production CORS & CSRF
-    CORS_ALLOWED_ORIGINS = [
-        "https://altqll.vercel.app",
-    ]
-    CSRF_TRUSTED_ORIGINS = [
-        "https://altqll.vercel.app",
-    ]
-
-    # Cookies for prod
-    SESSION_COOKIE_SECURE = True
-    SESSION_COOKIE_SAMESITE = 'None'
-    CSRF_COOKIE_SECURE = True
-    CSRF_COOKIE_SAMESITE = 'None'
-    SIMPLE_JWT.update({
-        'AUTH_COOKIE_SECURE': True,
-        'AUTH_COOKIE_SAMESITE': 'None',
-    })
-
+    CORS_ALLOWED_ORIGINS = ["https://altqll.vercel.app"]
     SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

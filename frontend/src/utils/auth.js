@@ -1,341 +1,279 @@
 import axios from "axios";
 
+// ============================================
+// CONFIG
+// ============================================
 
-// Configuración y constantes
-export const API_URL = import.meta.env?.VITE_API_URL || "/api";
+export const API_URL = import.meta.env?.VITE_API_URL || "http://localhost:8000/";
 
 const ENDPOINTS = {
-  LOGIN: '/api/auth/login/',
-  LOGOUT: '/api/auth/logout/',
-  LOGOUT_ALL: '/api/auth/logout-all/',
-  REFRESH: '/api/auth/token/refresh/',  // ← Corregido: era /token/refresh/
-  VERIFY: '/api/auth/token/verify/',    // ← Corregido: era /token/verify-auth/
-  USER_DATA: '/api/auth/home/'             // ← Corregido: era /api/auth/home/
+  LOGIN: 'api/auth/login/',
+  LOGOUT: 'api/auth/logout/',
+  LOGOUT_ALL: 'api/auth/logout-all/',
+  REFRESH: 'api/auth/token/refresh/',
+  VERIFY: 'api/auth/token/verify/',
+  USER_DATA: 'api/auth/home/'
 };
 
-const HTTP_STATUS = {
-  UNAUTHORIZED: 401,
-  BAD_REQUEST: 400
+const HTTP_STATUS = { UNAUTHORIZED: 401, BAD_REQUEST: 400 };
+
+// Configuración de tokens
+const TOKEN_CONFIG = {
+  ACCESS_LIFETIME_MS: 15 * 60 * 1000, // 15 minutos
+  REFRESH_BEFORE_MS: 2 * 60 * 1000,   // Refrescar 2 min antes de expirar
 };
 
-// Crear instancia de Axios
+// ============================================
+// CLIENTE AXIOS
+// ============================================
+
 const apiClient = axios.create({
   baseURL: API_URL,
-  withCredentials: true,  // ← CRÍTICO: envía cookies httpOnly
   headers: { 
     'Accept': 'application/json', 
     'Content-Type': 'application/json' 
   }
 });
 
-// Variables globales para manejo de refresh
+// Variables globales
 let isRefreshing = false;
 let failedQueue = [];
+let refreshTimer = null;
 export let loggedOut = false;
 
-// Procesar cola de requests pendientes
+// ============================================
+// UTILIDADES
+// ============================================
+
 const processQueue = (error, result = null) => {
-  failedQueue.forEach(promise => {
-    if (error) {
-      promise.reject(error);
-    } else {
-      promise.resolve(result);
-    }
-  });
+  failedQueue.forEach(p => error ? p.reject(error) : p.resolve(result));
   failedQueue = [];
 };
 
-// Utilidades
 const utils = {
-  /**
-   * Verifica si la URL debe omitir autenticación
-   */
   shouldSkipAuth(url) {
-    const skipEndpoints = [
-      ENDPOINTS.LOGIN, 
-      ENDPOINTS.LOGOUT, 
-      ENDPOINTS.LOGOUT_ALL,
-      ENDPOINTS.REFRESH
-    ];
-    return skipEndpoints.some(endpoint => url.includes(endpoint));
+    const skip = [ENDPOINTS.LOGIN, ENDPOINTS.LOGOUT, ENDPOINTS.LOGOUT_ALL, ENDPOINTS.REFRESH];
+    return skip.some(ep => url.includes(ep));
   },
 
-  /**
-   * Redirige a la página de login
-   */
   redirectToSignIn() {
     loggedOut = true;
     processQueue(new Error("Usuario no autenticado"));
-    
-    // Limpiar storage local si es necesario
-    sessionStorage.clear();
-    
-   // Detectar si no hay token
-  const accessToken = getAccessTokenFromCookies(); // tu función que lee cookies
-  if (!accessToken) {
-    console.log('🔒 No hay token, redirigiendo...');
-    window.location.href = '/signin'; // pantalla de login
-  }
+    this.clearTokens();
+    if (!window.location.pathname.includes('/signin')) window.location.href = '/signin';
   },
 
-  /**
-   * Manejo centralizado de errores
-   */
+  clearTokens() {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("tokenTimestamp");
+    this.stopAutoRefresh();
+  },
+
   handleError(error, operation) {
-    const msg = error.response?.data?.detail || 
-                error.response?.data?.error || 
-                error.response?.data?.message || 
+    const msg = error.response?.data?.detail ||
+                error.response?.data?.error ||
+                error.response?.data?.message ||
                 error.message || 
                 `Error en ${operation}`;
-    
-    console.error(`❌ Error en ${operation}:`, {
-      message: msg,
-      status: error.response?.status,
-      data: error.response?.data
-    });
-    
+    console.error(`❌ ${operation}:`, msg, { status: error.response?.status });
     return new Error(msg);
+  },
+
+  // Programar refresh automático
+  scheduleAutoRefresh() {
+    this.stopAutoRefresh();
+    const timeUntilRefresh = TOKEN_CONFIG.ACCESS_LIFETIME_MS - TOKEN_CONFIG.REFRESH_BEFORE_MS;
+    
+    refreshTimer = setTimeout(async () => {
+      console.log('🔄 Auto-refresh programado ejecutándose...');
+      await authService.refreshToken();
+    }, timeUntilRefresh);
+    
+    console.log(`⏰ Auto-refresh programado en ${timeUntilRefresh / 1000}s`);
+  },
+
+  stopAutoRefresh() {
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+      refreshTimer = null;
+    }
+  },
+
+  saveTokens(access, refresh) {
+    localStorage.setItem("accessToken", access);
+    localStorage.setItem("refreshToken", refresh);
+    localStorage.setItem("tokenTimestamp", Date.now().toString());
+    this.scheduleAutoRefresh();
+  },
+
+  // Verificar si el token necesita refresh
+  shouldRefreshToken() {
+    const timestamp = localStorage.getItem("tokenTimestamp");
+    if (!timestamp) return false;
+    
+    const elapsed = Date.now() - parseInt(timestamp);
+    const shouldRefresh = elapsed >= (TOKEN_CONFIG.ACCESS_LIFETIME_MS - TOKEN_CONFIG.REFRESH_BEFORE_MS);
+    
+    if (shouldRefresh) console.log('⚠️ Token cerca de expirar, necesita refresh');
+    return shouldRefresh;
   }
 };
 
-// Servicio de autenticación
+// ============================================
+// AUTHSERVICE
+// ============================================
+
 export const authService = {
-  /**
-   * Login de usuario
-   */
   async login(username, password) {
-    if (!username || !password) {
-      throw new Error('Username y password son requeridos');
-    }
-
+    if (!username || !password) throw new Error('Username y password son requeridos');
     loggedOut = false;
-    
+
     try {
-      console.log('🔐 Iniciando login...');
-      const response = await apiClient.post(ENDPOINTS.LOGIN, { 
-        username, 
-        password 
-      });
-      
-      console.log('✅ Login exitoso:', response.data);
-      return response.data;
-    } catch (error) {
-      throw utils.handleError(error, 'login');
+      const res = await apiClient.post(ENDPOINTS.LOGIN, { username, password });
+      const { access, refresh } = res.data;
+      utils.saveTokens(access, refresh);
+      console.log('✅ Login exitoso, auto-refresh programado');
+      return res.data;
+    } catch (err) {
+      throw utils.handleError(err, 'login');
     }
   },
 
-  /**
-   * Logout del usuario actual
-   */
-async logout() {
-  let response;
-  try {
-    console.log('🚪 Cerrando sesión...');
-    response = await apiClient.post(ENDPOINTS.LOGOUT);
-    console.log('✅ Logout exitoso');
-  } catch (error) {
-    console.error('⚠️ Error en logout (continuando):', error.message);
-  } finally {
-    // Si el backend devuelve redirect, úsalo
-    if (response?.data?.redirect) {
-      window.location.href = response.data.redirect;
-    } else {
-      // fallback a la pantalla de bienvenida
-      window.location.href = '/';
+  async logout() {
+    try { 
+      await apiClient.post(ENDPOINTS.LOGOUT, { 
+        refresh: localStorage.getItem("refreshToken") 
+      }); 
     }
-  }
-},
+    catch (err) { console.warn('⚠️ Logout falló en backend, continuando'); }
+    finally { utils.redirectToSignIn(); }
+  },
 
-
-  /**
-   * Logout global (todas las sesiones)
-   */
   async logoutAll() {
-    let response;
-    try {
-      console.log('🚪 Cerrando todas las sesiones...');
-      response = await apiClient.post(ENDPOINTS.LOGOUT_ALL);
-      console.log('✅ Logout global exitoso');
-    } catch (error) {
-      console.error('⚠️ Error en logout global (continuando):', error.message);
-    } finally {
-  // Si el backend devuelve redirect, úsalo
-  if (response?.data?.redirect) {
-    window.location.href = response.data.redirect;
-  } else {
-    // fallback a la pantalla de bienvenida
-    window.location.href = '/';
-  }
-}
-
+    try { 
+      await apiClient.post(ENDPOINTS.LOGOUT_ALL, { 
+        refresh: localStorage.getItem("refreshToken") 
+      }); 
+    }
+    catch (err) { console.warn('⚠️ Logout global falló en backend, continuando'); }
+    finally { utils.redirectToSignIn(); }
   },
 
-  /**
-   * Verificar si el usuario está autenticado
-   */
   async verifyAuth() {
-    // Si ya sabemos que hizo logout, no intentar verificar
-    if (loggedOut) {
-      return false;
+    if (loggedOut) return false;
+    const token = localStorage.getItem("accessToken");
+    if (!token) return false;
+
+    // Si el token está por expirar, refrescarlo primero
+    if (utils.shouldRefreshToken()) {
+      console.log('🔄 Token por expirar, refrescando antes de verificar...');
+      await this.refreshToken();
     }
 
     try {
-      const response = await apiClient.get(ENDPOINTS.VERIFY);
-      console.log('✅ Usuario autenticado:', response.data);
+      await apiClient.get(ENDPOINTS.VERIFY, { 
+        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` } 
+      });
       return true;
-    } catch (error) {
-      // Si ya hizo logout, retornar false silenciosamente
-      if (loggedOut) {
-        return false;
+    } catch (err) {
+      if ([HTTP_STATUS.UNAUTHORIZED, HTTP_STATUS.BAD_REQUEST].includes(err.response?.status)) {
+        console.log('❌ Token inválido, redirigiendo a login');
+        utils.redirectToSignIn();
       }
-
-      // Si es 401, el usuario no está autenticado
-      if (error.response?.status === HTTP_STATUS.UNAUTHORIZED) {
-        console.log('⚠️ Usuario no autenticado');
-        return false;
-      }
-      // Log solo si no estamos en página de signin
-      if (!window.location.pathname.includes('/signin')) {
-        console.error('❌ Error verificando autenticación:', error.message);
-      }
-      
       return false;
     }
   },
 
-  /**
-   * Obtener datos del usuario
-   */
   async getUserData(maxRetries = 2) {
-    if (loggedOut) {
-      console.log('⚠️ Usuario no autenticado, no se pueden obtener datos');
-      return null;
-    }
-
+    if (loggedOut) return null;
     let attempts = 0;
     
     while (attempts <= maxRetries) {
       try {
-        console.log(`📡 Obteniendo datos del usuario (intento ${attempts + 1}/${maxRetries + 1})...`);
-        const response = await apiClient.get(ENDPOINTS.USER_DATA);
-        console.log('✅ Datos de usuario obtenidos:', response.data);
-        return response.data;
-      } catch (error) {
+        const res = await apiClient.get(ENDPOINTS.USER_DATA, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
+        });
+        return res.data;
+      } catch (err) {
         attempts++;
-        
-        // Si es el último intento, lanzar error
-        if (attempts > maxRetries) {
-          throw utils.handleError(error, 'getUserData');
-        }
-        
-        // Espera incremental entre reintentos
-        const delay = 1000 * attempts;
-        console.log(`⏳ Reintentando en ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        if (attempts > maxRetries) throw utils.handleError(err, 'getUserData');
+        console.log(`⚠️ Reintento ${attempts}/${maxRetries} para getUserData`);
+        await new Promise(r => setTimeout(r, 1000 * attempts));
       }
     }
-    
     return null;
   },
 
-  /**
-   * Refrescar el access token usando el refresh token
-   */
   async refreshToken() {
-    // No intentar refresh si ya hizo logout
-    if (loggedOut) {
-      console.log('⚠️ No se puede refrescar token después de logout');
-      return false;
-    }
-
-    // Si ya hay un refresh en progreso, encolar el request
+    if (loggedOut) return false;
     if (isRefreshing) {
-      console.log('⏳ Refresh en progreso, encolando request...');
-      return new Promise((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      });
+      console.log('⏳ Refresh ya en progreso, encolando...');
+      return new Promise((res, rej) => failedQueue.push({ resolve: res, reject: rej }));
     }
 
     isRefreshing = true;
+    const refresh = localStorage.getItem("refreshToken");
+    if (!refresh) { 
+      isRefreshing = false; 
+      utils.redirectToSignIn(); 
+      return false; 
+    }
 
     try {
-      console.log('🔄 Refrescando access token...');
-      const response = await apiClient.post(ENDPOINTS.REFRESH);
+      console.log('🔄 Refrescando token...');
+      const res = await apiClient.post(ENDPOINTS.REFRESH, { refresh });
+      const { access, refresh: newRefresh } = res.data;
       
+      utils.saveTokens(access, newRefresh || refresh);
+      processQueue(null, res);
       console.log('✅ Token refrescado exitosamente');
-      processQueue(null, response);
       return true;
-    } catch (error) {
-      console.error('❌ Error refrescando token:', error.message);
-      processQueue(error, null);
-
-      // Si el refresh falla con 401 o 400, redirigir a login
-      if (!loggedOut && 
-          [HTTP_STATUS.UNAUTHORIZED, HTTP_STATUS.BAD_REQUEST].includes(error.response?.status)) {
-        console.log('🔒 Refresh token inválido, cerrando sesión...');
-        utils.redirectToSignIn();
-      }
-
+    } catch (err) {
+      console.error('❌ Error al refrescar token:', err.response?.data || err.message);
+      processQueue(err, null);
+      utils.redirectToSignIn();
       return false;
-    } finally {
-      isRefreshing = false;
+    } finally { 
+      isRefreshing = false; 
     }
   }
 };
 
 // ============================================
-// INTERCEPTORES DE AXIOS
+// INTERCEPTORES
 // ============================================
 
-/**
- * Interceptor de Request (opcional - para debugging)
- */
 apiClient.interceptors.request.use(
   config => {
-    // Log de requests (comentar en producción)
-    console.log(`📤 ${config.method.toUpperCase()} ${config.url}`);
+    const token = localStorage.getItem("accessToken");
+    if (token && !utils.shouldSkipAuth(config.url)) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
-  error => {
-    console.error('❌ Error en request:', error);
-    return Promise.reject(error);
-  }
+  error => Promise.reject(error)
 );
 
-/**
- * Interceptor de Response - Manejo automático de 401
- */
 apiClient.interceptors.response.use(
-  response => {
-    // Request exitoso
-    return response;
-  },
+  res => res,
   async error => {
     const originalRequest = error.config;
+    if (loggedOut) return Promise.reject(error);
 
-    // Si ya hizo logout, no procesar más
-    if (loggedOut) {
-      return Promise.reject(error);
-    }
-
-    // Si es 401 y no es un endpoint que debe saltarse
     if (error.response?.status === HTTP_STATUS.UNAUTHORIZED &&
         !originalRequest._retry &&
         !utils.shouldSkipAuth(originalRequest.url)) {
       
-      console.log('⚠️ 401 detectado, intentando refresh...');
+      console.log('🔄 401 detectado, intentando refresh...');
       originalRequest._retry = true;
-
-      // Intentar refrescar el token
       const refreshed = await authService.refreshToken();
-
+      
       if (refreshed) {
-        console.log('✅ Reintentando request original...');
+        console.log('✅ Request reintentado con nuevo token');
         return apiClient(originalRequest);
-      } else {
-        console.log('❌ Refresh falló, redirigiendo a login...');
-        utils.redirectToSignIn();
       }
+      utils.redirectToSignIn();
     }
 
     return Promise.reject(error);
@@ -343,54 +281,72 @@ apiClient.interceptors.response.use(
 );
 
 // ============================================
-// HELPERS ADICIONALES
+// INICIALIZACIÓN (llamar al cargar la app)
 // ============================================
 
-/**
- * Verifica si el usuario está autenticado al cargar la app
- */
-export async function checkInitialAuth() {
-  try {
-    const isAuth = await authService.verifyAuth();
-    return isAuth;
-  } catch (error) {
-    console.error('Error verificando auth inicial:', error);
-    return false;
+export function initAuth() {
+  const token = localStorage.getItem("accessToken");
+  const timestamp = localStorage.getItem("tokenTimestamp");
+  
+  if (token && timestamp) {
+    const elapsed = Date.now() - parseInt(timestamp);
+    
+    // Si el token ya expiró, limpiar
+    if (elapsed >= TOKEN_CONFIG.ACCESS_LIFETIME_MS) {
+      console.log('⚠️ Token expirado al iniciar, limpiando...');
+      utils.clearTokens();
+      return false;
+    }
+    
+    // Si no, programar el siguiente refresh
+    const timeUntilRefresh = TOKEN_CONFIG.ACCESS_LIFETIME_MS - TOKEN_CONFIG.REFRESH_BEFORE_MS - elapsed;
+    if (timeUntilRefresh > 0) {
+      refreshTimer = setTimeout(async () => {
+        console.log('🔄 Auto-refresh programado ejecutándose...');
+        await authService.refreshToken();
+      }, timeUntilRefresh);
+      console.log(`✅ Auth inicializado, refresh en ${(timeUntilRefresh / 1000).toFixed(0)}s`);
+    } else {
+      // Token muy cerca de expirar, refrescar inmediatamente
+      console.log('🔄 Token cerca de expirar, refrescando inmediatamente...');
+      authService.refreshToken();
+    }
+    return true;
   }
+  return false;
 }
 
-/**
- * Hook para rutas protegidas
- */
+// ============================================
+// HELPERS SPA
+// ============================================
+
+export async function checkInitialAuth() { 
+  return await authService.verifyAuth(); 
+}
+
 export async function requireAuth() {
   const isAuth = await authService.verifyAuth();
-  
   if (!isAuth && !window.location.pathname.includes('/signin')) {
-    console.log('🔒 Ruta protegida - redirigiendo a login');
-    window.location.href = '/signin'; 
-    return false;
+    window.location.href = '/signin';
   }
-  
   return isAuth;
 }
 
-
-// ============================================
-// DEBUGGING
-// ============================================
-
-/**
- * Función de debugging para verificar estado
- */
 export function debugAuth() {
-  console.log('🔍 Estado de autenticación:', {
+  const timestamp = localStorage.getItem("tokenTimestamp");
+  const elapsed = timestamp ? Date.now() - parseInt(timestamp) : null;
+  
+  console.log('🔍 Auth debug:', {
     loggedOut,
     isRefreshing,
     failedQueueLength: failedQueue.length,
     currentPath: window.location.pathname,
-    apiUrl: API_URL
+    apiUrl: API_URL,
+    hasAccessToken: !!localStorage.getItem("accessToken"),
+    hasRefreshToken: !!localStorage.getItem("refreshToken"),
+    tokenAge: elapsed ? `${(elapsed / 1000).toFixed(0)}s` : 'N/A',
+    autoRefreshActive: !!refreshTimer
   });
 }
 
-// Exportar cliente de axios por si se necesita para otros servicios
 export default apiClient;
