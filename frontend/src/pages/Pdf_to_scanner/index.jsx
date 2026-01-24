@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import PDF_SCAN from "../../api/pdf_scan";
 import Label from "../../components/form/Label";
-import { Upload } from "lucide-react";
+import { Upload, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { API_URL } from "../../utils/auth";
 
@@ -18,9 +18,30 @@ export default function Index() {
 
   const [downloadUrl, setDownloadUrl] = useState(null);
   const [processedFileName, setProcessedFileName] = useState(null);
+  const [pdfList, setPdfList] = useState([]);
 
   const selectedFile = watch("archivo");
 
+  // -------------------------------
+  // Cargar PDFs al iniciar
+  // -------------------------------
+  const fetchPDFs = async () => {
+    try {
+      const data = await PDF_SCAN.listarPDFs();
+      setPdfList(data);
+    } catch (error) {
+      console.error("Error cargando PDFs:", error);
+      toast.error("Error al cargar PDFs");
+    }
+  };
+
+  useEffect(() => {
+    fetchPDFs();
+  }, []);
+
+  // -------------------------------
+  // Subir y procesar PDF
+  // -------------------------------
   const onSubmit = async (data) => {
     const file = data.archivo?.[0];
 
@@ -33,14 +54,15 @@ export default function Index() {
       const resp = await PDF_SCAN.procesarPDF(file);
 
       if (resp?.file) {
-        const filePath = `/media/${resp.file}`;
-        const fullUrl = `${API_URL}${filePath}`;
-
-        setDownloadUrl(fullUrl);
+        setDownloadUrl(resp.url);
         setProcessedFileName(resp.file);
+
+        toast.success("PDF procesado correctamente");
+
+        // Actualizar lista
+        fetchPDFs();
       }
 
-      toast.success("PDF procesado correctamente");
       reset();
     } catch (error) {
       console.error(error);
@@ -48,7 +70,27 @@ export default function Index() {
     }
   };
 
-  // 👉 Función para limpiar todo
+  // -------------------------------
+  // Eliminar PDF
+  // -------------------------------
+  const handleDelete = async (id) => {
+    if (!confirm("¿Estás seguro de eliminar este PDF?")) return;
+
+    try {
+      await PDF_SCAN.eliminarPDF(id);
+      toast.success("PDF eliminado correctamente");
+
+      // Actualizar lista
+      fetchPDFs();
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al eliminar PDF");
+    }
+  };
+
+  // -------------------------------
+  // Reset formulario
+  // -------------------------------
   const handleReset = () => {
     reset();
     setDownloadUrl(null);
@@ -63,7 +105,7 @@ export default function Index() {
         <h1 className="text-2xl font-bold text-slate-800">PDF TO SCANNER</h1>
       </div>
 
-      {/* Contenido */}
+      {/* Subir PDF */}
       <div className="bg-white p-6 rounded-xl shadow-md space-y-4">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="lg:col-span-2 space-y-2">
@@ -88,7 +130,6 @@ export default function Index() {
             )}
           </div>
 
-          {/* Botones */}
           <div className="flex gap-3">
             <button
               type="submit"
@@ -102,7 +143,6 @@ export default function Index() {
               {isSubmitting ? "Procesando..." : "Enviar y procesar PDF"}
             </button>
 
-            {/* Botón REESTABLECER */}
             <button
               type="button"
               onClick={handleReset}
@@ -113,7 +153,7 @@ export default function Index() {
           </div>
         </form>
 
-        {/* Resultado */}
+        {/* Resultado último PDF */}
         {downloadUrl && (
           <div className="mt-4 space-y-2">
             <p className="text-slate-700 font-medium">
@@ -126,6 +166,50 @@ export default function Index() {
                 Descargar PDF Procesado
               </button>
             </a>
+          </div>
+        )}
+      </div>
+
+      {/* Listado de PDFs */}
+      <div className="bg-white p-6 rounded-xl shadow-md mt-6">
+        <h2 className="text-xl font-bold mb-4 text-slate-800">Mis PDFs</h2>
+
+        {pdfList.length === 0 ? (
+          <p className="text-gray-500">No tienes PDFs procesados aún.</p>
+        ) : (
+          <div className="space-y-2">
+            {pdfList.map((pdf) => {
+              const fileSizeMB = (pdf.file_size / (1024 * 1024)).toFixed(2);
+              const createdAt = new Date(pdf.created_at).toLocaleString();
+
+              return (
+                <div
+                  key={pdf.id}
+                  className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm"
+                >
+                  <div>
+                    <p className="font-medium text-slate-700">{pdf.output_name}</p>
+                    <p className="text-sm text-gray-500">
+                      Tamaño: {fileSizeMB} MB | Creado: {createdAt}
+                    </p>
+                    <a
+                      href={pdf.file_path}
+                      target="_blank"
+                      className="text-blue-600 text-sm hover:underline"
+                    >
+                      Ver / Descargar
+                    </a>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(pdf.id)}
+                    className="flex items-center gap-1 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Eliminar
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -9,7 +9,6 @@ export const API_URL = import.meta.env?.VITE_API_URL || "http://localhost:8000/"
 const ENDPOINTS = {
   LOGIN: 'api/auth/login/',
   LOGOUT: 'api/auth/logout/',
-  LOGOUT_ALL: 'api/auth/logout-all/',
   REFRESH: 'api/auth/token/refresh/',
   VERIFY: 'api/auth/token/verify/',
   USER_DATA: 'api/auth/home/'
@@ -52,7 +51,7 @@ const processQueue = (error, result = null) => {
 
 const utils = {
   shouldSkipAuth(url) {
-    const skip = [ENDPOINTS.LOGIN, ENDPOINTS.LOGOUT, ENDPOINTS.LOGOUT_ALL, ENDPOINTS.REFRESH];
+    const skip = [ENDPOINTS.LOGIN, ENDPOINTS.LOGOUT, ENDPOINTS.REFRESH, ENDPOINTS.VERIFY];
     return skip.some(ep => url.includes(ep));
   },
 
@@ -80,16 +79,13 @@ const utils = {
     return new Error(msg);
   },
 
-  // Programar refresh automático
   scheduleAutoRefresh() {
     this.stopAutoRefresh();
     const timeUntilRefresh = TOKEN_CONFIG.ACCESS_LIFETIME_MS - TOKEN_CONFIG.REFRESH_BEFORE_MS;
-    
     refreshTimer = setTimeout(async () => {
-      console.log('🔄 Auto-refresh programado ejecutándose...');
+      console.log('🔄 Auto-refresh ejecutándose...');
       await authService.refreshToken();
     }, timeUntilRefresh);
-    
     console.log(`⏰ Auto-refresh programado en ${timeUntilRefresh / 1000}s`);
   },
 
@@ -107,14 +103,11 @@ const utils = {
     this.scheduleAutoRefresh();
   },
 
-  // Verificar si el token necesita refresh
   shouldRefreshToken() {
     const timestamp = localStorage.getItem("tokenTimestamp");
     if (!timestamp) return false;
-    
     const elapsed = Date.now() - parseInt(timestamp);
     const shouldRefresh = elapsed >= (TOKEN_CONFIG.ACCESS_LIFETIME_MS - TOKEN_CONFIG.REFRESH_BEFORE_MS);
-    
     if (shouldRefresh) console.log('⚠️ Token cerca de expirar, necesita refresh');
     return shouldRefresh;
   }
@@ -131,9 +124,11 @@ export const authService = {
 
     try {
       const res = await apiClient.post(ENDPOINTS.LOGIN, { username, password });
-      const { access, refresh } = res.data;
+      const { access, refresh, user } = res.data;
+      if (!access || !refresh) throw new Error('Respuesta de login inválida');
       utils.saveTokens(access, refresh);
       console.log('✅ Login exitoso, auto-refresh programado');
+      console.log('👤 Usuario:', user);
       return res.data;
     } catch (err) {
       throw utils.handleError(err, 'login');
@@ -142,22 +137,13 @@ export const authService = {
 
   async logout() {
     try { 
-      await apiClient.post(ENDPOINTS.LOGOUT, { 
-        refresh: localStorage.getItem("refreshToken") 
-      }); 
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (refreshToken) await apiClient.post(ENDPOINTS.LOGOUT, { refresh: refreshToken }); 
+    } catch (err) { 
+      console.warn('⚠️ Logout falló en backend:', err.message); 
+    } finally { 
+      utils.redirectToSignIn(); 
     }
-    catch (err) { console.warn('⚠️ Logout falló en backend, continuando'); }
-    finally { utils.redirectToSignIn(); }
-  },
-
-  async logoutAll() {
-    try { 
-      await apiClient.post(ENDPOINTS.LOGOUT_ALL, { 
-        refresh: localStorage.getItem("refreshToken") 
-      }); 
-    }
-    catch (err) { console.warn('⚠️ Logout global falló en backend, continuando'); }
-    finally { utils.redirectToSignIn(); }
   },
 
   async verifyAuth() {
@@ -165,20 +151,17 @@ export const authService = {
     const token = localStorage.getItem("accessToken");
     if (!token) return false;
 
-    // Si el token está por expirar, refrescarlo primero
     if (utils.shouldRefreshToken()) {
       console.log('🔄 Token por expirar, refrescando antes de verificar...');
-      await this.refreshToken();
+      const refreshed = await this.refreshToken();
+      if (!refreshed) return false;
     }
 
     try {
-      await apiClient.get(ENDPOINTS.VERIFY, { 
-        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` } 
-      });
+      await apiClient.get(ENDPOINTS.VERIFY, { headers: { Authorization: `Bearer ${token}` } });
       return true;
     } catch (err) {
       if ([HTTP_STATUS.UNAUTHORIZED, HTTP_STATUS.BAD_REQUEST].includes(err.response?.status)) {
-        console.log('❌ Token inválido, redirigiendo a login');
         utils.redirectToSignIn();
       }
       return false;
@@ -188,7 +171,6 @@ export const authService = {
   async getUserData(maxRetries = 2) {
     if (loggedOut) return null;
     let attempts = 0;
-    
     while (attempts <= maxRetries) {
       try {
         const res = await apiClient.get(ENDPOINTS.USER_DATA, {
@@ -198,7 +180,6 @@ export const authService = {
       } catch (err) {
         attempts++;
         if (attempts > maxRetries) throw utils.handleError(err, 'getUserData');
-        console.log(`⚠️ Reintento ${attempts}/${maxRetries} para getUserData`);
         await new Promise(r => setTimeout(r, 1000 * attempts));
       }
     }
@@ -207,35 +188,25 @@ export const authService = {
 
   async refreshToken() {
     if (loggedOut) return false;
-    if (isRefreshing) {
-      console.log('⏳ Refresh ya en progreso, encolando...');
-      return new Promise((res, rej) => failedQueue.push({ resolve: res, reject: rej }));
-    }
+    if (isRefreshing) return new Promise((res, rej) => failedQueue.push({ resolve: res, reject: rej }));
 
     isRefreshing = true;
     const refresh = localStorage.getItem("refreshToken");
-    if (!refresh) { 
-      isRefreshing = false; 
-      utils.redirectToSignIn(); 
-      return false; 
-    }
+    if (!refresh) { utils.redirectToSignIn(); isRefreshing = false; return false; }
 
     try {
-      console.log('🔄 Refrescando token...');
       const res = await apiClient.post(ENDPOINTS.REFRESH, { refresh });
       const { access, refresh: newRefresh } = res.data;
-      
       utils.saveTokens(access, newRefresh || refresh);
       processQueue(null, res);
       console.log('✅ Token refrescado exitosamente');
       return true;
     } catch (err) {
-      console.error('❌ Error al refrescar token:', err.response?.data || err.message);
       processQueue(err, null);
       utils.redirectToSignIn();
       return false;
-    } finally { 
-      isRefreshing = false; 
+    } finally {
+      isRefreshing = false;
     }
   }
 };
@@ -264,13 +235,11 @@ apiClient.interceptors.response.use(
     if (error.response?.status === HTTP_STATUS.UNAUTHORIZED &&
         !originalRequest._retry &&
         !utils.shouldSkipAuth(originalRequest.url)) {
-      
-      console.log('🔄 401 detectado, intentando refresh...');
+
       originalRequest._retry = true;
       const refreshed = await authService.refreshToken();
-      
       if (refreshed) {
-        console.log('✅ Request reintentado con nuevo token');
+        originalRequest.headers.Authorization = `Bearer ${localStorage.getItem("accessToken")}`;
         return apiClient(originalRequest);
       }
       utils.redirectToSignIn();
@@ -281,72 +250,37 @@ apiClient.interceptors.response.use(
 );
 
 // ============================================
-// INICIALIZACIÓN (llamar al cargar la app)
+// INICIALIZACIÓN
 // ============================================
 
 export function initAuth() {
   const token = localStorage.getItem("accessToken");
   const timestamp = localStorage.getItem("tokenTimestamp");
-  
-  if (token && timestamp) {
-    const elapsed = Date.now() - parseInt(timestamp);
-    
-    // Si el token ya expiró, limpiar
-    if (elapsed >= TOKEN_CONFIG.ACCESS_LIFETIME_MS) {
-      console.log('⚠️ Token expirado al iniciar, limpiando...');
-      utils.clearTokens();
-      return false;
-    }
-    
-    // Si no, programar el siguiente refresh
-    const timeUntilRefresh = TOKEN_CONFIG.ACCESS_LIFETIME_MS - TOKEN_CONFIG.REFRESH_BEFORE_MS - elapsed;
-    if (timeUntilRefresh > 0) {
-      refreshTimer = setTimeout(async () => {
-        console.log('🔄 Auto-refresh programado ejecutándose...');
-        await authService.refreshToken();
-      }, timeUntilRefresh);
-      console.log(`✅ Auth inicializado, refresh en ${(timeUntilRefresh / 1000).toFixed(0)}s`);
-    } else {
-      // Token muy cerca de expirar, refrescar inmediatamente
-      console.log('🔄 Token cerca de expirar, refrescando inmediatamente...');
-      authService.refreshToken();
-    }
-    return true;
+  if (!token || !timestamp) return false;
+
+  const elapsed = Date.now() - parseInt(timestamp);
+  if (elapsed >= TOKEN_CONFIG.ACCESS_LIFETIME_MS) { utils.clearTokens(); return false; }
+
+  const timeUntilRefresh = TOKEN_CONFIG.ACCESS_LIFETIME_MS - TOKEN_CONFIG.REFRESH_BEFORE_MS - elapsed;
+  if (timeUntilRefresh > 0) {
+    refreshTimer = setTimeout(() => authService.refreshToken(), timeUntilRefresh);
+  } else {
+    authService.refreshToken();
   }
-  return false;
+  return true;
 }
 
-// ============================================
-// HELPERS SPA
-// ============================================
-
-export async function checkInitialAuth() { 
-  return await authService.verifyAuth(); 
-}
-
+export async function checkInitialAuth() { return await authService.verifyAuth(); }
 export async function requireAuth() {
   const isAuth = await authService.verifyAuth();
-  if (!isAuth && !window.location.pathname.includes('/signin')) {
-    window.location.href = '/signin';
-  }
+  if (!isAuth && !window.location.pathname.includes('/signin')) window.location.href = '/signin';
   return isAuth;
 }
 
 export function debugAuth() {
   const timestamp = localStorage.getItem("tokenTimestamp");
   const elapsed = timestamp ? Date.now() - parseInt(timestamp) : null;
-  
-  console.log('🔍 Auth debug:', {
-    loggedOut,
-    isRefreshing,
-    failedQueueLength: failedQueue.length,
-    currentPath: window.location.pathname,
-    apiUrl: API_URL,
-    hasAccessToken: !!localStorage.getItem("accessToken"),
-    hasRefreshToken: !!localStorage.getItem("refreshToken"),
-    tokenAge: elapsed ? `${(elapsed / 1000).toFixed(0)}s` : 'N/A',
-    autoRefreshActive: !!refreshTimer
-  });
+  console.log('🔍 Auth debug:', { loggedOut, isRefreshing, failedQueueLength: failedQueue.length, currentPath: window.location.pathname, hasAccessToken: !!localStorage.getItem("accessToken"), tokenAge: elapsed ? `${(elapsed / 1000).toFixed(0)}s` : 'N/A', autoRefreshActive: !!refreshTimer });
 }
 
 export default apiClient;

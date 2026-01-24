@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from aplication.models import Trabajador, Especialidad, EspecialidadImagen, CategoriaEspecialidad, CategoriaCertificado, CategoriaCurso, Certificado, Curso
-from aplication.serializers import TrabajadorListSerializer, TrabajadorDetailSerializer, PDFUploadSerializer, EspecialidadSerializer, EspecialidadImagenSerializer, CategoriaEspecialidadSerializer, CategoriaCertificadoSerializer, CategoriaCursoSerializer, CertificadoSerializer, CursoSerializer
+from aplication.models import Trabajador, Especialidad, EspecialidadImagen, CategoriaEspecialidad, CategoriaCertificado, CategoriaCurso, Certificado, Curso, ProcessedPDF
+from aplication.serializers import TrabajadorListSerializer, TrabajadorDetailSerializer, PDFUploadSerializer, EspecialidadSerializer, EspecialidadImagenSerializer, CategoriaEspecialidadSerializer, CategoriaCertificadoSerializer, CategoriaCursoSerializer, CertificadoSerializer, CursoSerializer, ProcessedPDFSerializer
 from rest_framework.views import APIView
 from django.http import JsonResponse
 from rest_framework import status
@@ -20,6 +20,10 @@ from django.http import HttpResponse
 from django.views.decorators.http import require_GET, require_POST
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from aplication.services.pdf_processor import procesar_pdf
+
+
+
 
 class TrabajadorViewSet(viewsets.ModelViewSet):
     queryset = Trabajador.objects.all().order_by('nombre')
@@ -67,69 +71,42 @@ class CursoViewSet(viewsets.ModelViewSet):
 # ================================
 # Vista para procesar PDF
 # ================================
-class PDFProcessView(APIView):
+class PDFViewSet(viewsets.ModelViewSet):
+    """
+    API para procesar PDFs y listar/eliminar los existentes
+    """
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    serializer_class = ProcessedPDFSerializer
+    queryset = ProcessedPDF.objects.all()
 
-    def post(self, request):
-        serializer = PDFUploadSerializer(data=request.data)
-        if not serializer.is_valid():
-            return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_queryset(self):
+        # Solo los PDFs del usuario autenticado
+        return ProcessedPDF.objects.filter(user=self.request.user).order_by('-created_at')
 
-        archivo = serializer.validated_data['archivo']
-        original_name = archivo.name
+    def create(self, request, *args, **kwargs):
+        """
+        POST → Procesar PDF
+        """
+        # Llamamos a tu función que procesa el PDF y devuelve JsonResponse
+        result = procesar_pdf(request)
+        return result
 
-        # Carpeta media
-        media_dir = settings.MEDIA_ROOT
-        os.makedirs(media_dir, exist_ok=True)
+    def destroy(self, request, *args, **kwargs):
+        """
+        DELETE → Eliminar PDF
+        """
+        pdf = self.get_object()
 
-        # Archivo temporal
-        temp_filename = os.path.join(media_dir, f"temp_{uuid.uuid4().hex}_{original_name}")
-        with open(temp_filename, 'wb') as f:
-            for chunk in archivo.chunks():
-                f.write(chunk)
+        if pdf.user != request.user:
+            return Response({"detail": "No autorizado"}, status=status.HTTP_403_FORBIDDEN)
 
-        try:
-            # Convertir PDF a imágenes (Poppler requerido)
-            images = convert_from_path(temp_filename, poppler_path=settings.POPPLER_PATH)
+        # Eliminar archivo físico
+        file_path = pdf.file_path.replace(request.build_absolute_uri(settings.MEDIA_URL), settings.MEDIA_ROOT + "/")
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
-            processed_images = []
-            for i, img in enumerate(images, start=1):
-                w, h = img.size
-                if w > h:  # rotar horizontal
-                    img = img.rotate(90, expand=True)
-
-                img = img.filter(ImageFilter.GaussianBlur(1))
-                temp_img_path = os.path.join(media_dir, f"page_{uuid.uuid4().hex}.jpg")
-                img.save(temp_img_path)
-                processed_images.append(temp_img_path)
-
-            # PDF final
-            base = os.path.splitext(original_name)[0]
-            output_filename = f"{base}_scan.pdf"
-            output_path = os.path.join(media_dir, output_filename)
-
-            pdf = FPDF()
-            for img_path in processed_images:
-                pdf.add_page()
-                pdf.image(img_path, 0, 0, 210, 297)
-            pdf.output(output_path)
-
-            # limpiar imágenes temporales
-            for img_path in processed_images:
-                os.remove(img_path)
-
-        finally:
-            if os.path.exists(temp_filename):
-                os.remove(temp_filename)
-
-        # URL pública accesible desde frontend
-        file_url = request.build_absolute_uri(f"{settings.MEDIA_URL}{output_filename}")
-
-        return JsonResponse({"status": "ok", "file": output_filename, "url": file_url}, status=status.HTTP_200_OK)
-
-
-
+        pdf.delete()
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
 
 
 @csrf_exempt

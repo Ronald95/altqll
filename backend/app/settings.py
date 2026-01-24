@@ -6,10 +6,13 @@ from pathlib import Path
 from decouple import config
 from dotenv import load_dotenv
 from datetime import timedelta
+import platform
+import os
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 # ------------------------------------------------------------------------------
 # CORE
@@ -18,7 +21,28 @@ SECRET_KEY = config('SECRET_KEY', default='unsafe-secret-key')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
 
+
+# SUPABASE_URL = os.getenv("VITE_SUPABASE_URL")
+# SUPABASE_KEY = os.getenv("VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY")
+
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")  # Ej: https://xyzcompany.supabase.co
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")  # Service role key
+
 AUTH_USER_MODEL = 'aplication.CustomUser'
+
+
+SYSTEM = platform.system()  # Detecta 'Windows', 'Linux', 'Darwin' (macOS)
+
+if SYSTEM == "Windows":
+    POPPLER_PATH = os.getenv(
+        "POPPLER_PATH_WIN",
+        r"C:/poppler-25.12.0/Library/bin"
+    )
+else:
+    # Linux (Render) y macOS → usar PATH del sistema
+    POPPLER_PATH = None
+print(f"🖨️ POPPLER_PATH detectado: {POPPLER_PATH}")
 
 # ------------------------------------------------------------------------------
 # APPS
@@ -34,6 +58,7 @@ INSTALLED_APPS = [
     # Third-party
     'corsheaders',
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',  # AGREGADO para blacklist
     'csp',
 
     # Local
@@ -51,7 +76,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
 
-    'django.middleware.csrf.CsrfViewMiddleware',  # no molesta aunque no lo uses
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
 
@@ -142,6 +167,26 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    
+    # IMPORTANTE: Algoritmo y configuración de firma
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    'JWK_URL': None,
+    'LEEWAY': 0,
+    
+    # Configuración de tokens
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
+    
+    'JTI_CLAIM': 'jti',
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
 # ------------------------------------------------------------------------------
@@ -160,7 +205,7 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # ------------------------------------------------------------------------------
-# CSP (FORMATO NUEVO – SIN ERROR)
+# CSP (FORMATO NUEVO django-csp >= 4.0)
 # ------------------------------------------------------------------------------
 CONTENT_SECURITY_POLICY = {
     "DIRECTIVES": {
@@ -169,7 +214,7 @@ CONTENT_SECURITY_POLICY = {
         "style-src": ["'self'", "'unsafe-inline'"],
         "img-src": ["'self'", "data:", "https:"],
         "font-src": ["'self'", "data:"],
-        "connect-src": ["'self'"],
+        "connect-src": ["'self'"],  # Se actualizará por entorno
         "frame-ancestors": ["'none'"],
     }
 }
@@ -183,11 +228,46 @@ if DEBUG:
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ]
+    # CSP debe permitir conexiones al backend local
+    CONTENT_SECURITY_POLICY["DIRECTIVES"]["connect-src"] = [
+        "'self'", 
+        "http://localhost:8000", 
+        "http://127.0.0.1:8000"
+    ]
     SECURE_SSL_REDIRECT = False
+    
+    # Logging para debug
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+        },
+        'loggers': {
+            'auth_audit': {
+                'handlers': ['console'],
+                'level': 'INFO',
+            },
+            'rest_framework_simplejwt': {
+                'handlers': ['console'],
+                'level': 'DEBUG',
+            },
+        },
+    }
 else:
     print("🔒 Running in PRODUCTION mode")
     CORS_ALLOWED_ORIGINS = ["https://altqll.vercel.app"]
+    # CSP debe permitir conexiones al backend de producción
+    PRODUCTION_BACKEND_URL = config('PRODUCTION_BACKEND_URL', default='https://altqll-backend.onrender.com/')
+    CONTENT_SECURITY_POLICY["DIRECTIVES"]["connect-src"] = [
+        "'self'", 
+        PRODUCTION_BACKEND_URL
+    ]
+    
     SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

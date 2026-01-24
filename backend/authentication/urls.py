@@ -8,9 +8,9 @@ from authentication.views import (
 )
 
 urlpatterns = [
-    path('login/', EnterpriseTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('token/refresh/', EnterpriseTokenRefreshView.as_view(), name='token_refresh'),
+    path('login/', EnterpriseTokenObtainPairView.as_view(), name='login'),
+    path('token/refresh/', EnterpriseTokenRefreshView.as_view(), name='refresh'),
     path('logout/', EnterpriseLogoutView.as_view(), name='logout'),
-    path('token/verify/', VerifyAuthView.as_view(), name='token_verify'),
+    path('token/verify/', VerifyAuthView.as_view(), name='verify'),
     path('home/', Home.as_view(), name='home'),
 ]

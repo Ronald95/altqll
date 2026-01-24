@@ -1,9 +1,9 @@
-// ProtectedRoute.jsx - Versión Mejorada
+// ProtectedRoute.jsx
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useState, useEffect } from "react";
 
-// Componente de loading mejorado
+// Spinner mientras se verifica auth
 const LoadingSpinner = ({ message = "Verificando sesión..." }) => (
   <div className="flex items-center justify-center min-h-screen bg-gray-50">
     <div className="flex flex-col items-center space-y-4">
@@ -13,95 +13,89 @@ const LoadingSpinner = ({ message = "Verificando sesión..." }) => (
   </div>
 );
 
-const ProtectedRoute = ({ 
-  redirectTo = "/signin",
-  requiredRole = null,
-  fallback = null 
-}) => {
+/**
+ * ProtectedRoute
+ * @param {string|string[]} allowedRoles - Roles permitidos
+ * @param {string} redirectTo - Ruta login
+ * @param {ReactNode} fallback - Componente mientras se verifica
+ */
+const ProtectedRoute = ({ allowedRoles = null, redirectTo = "/signin", fallback = null }) => {
   const { isAuthenticated, loading, user, checkAuth } = useAuth();
   const location = useLocation();
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
   useEffect(() => {
-    // Verificar autenticación en montaje del componente
-    const verifyAuth = async () => {
-      if (isInitialLoad && !isAuthenticated && !loading) {
-        try {
-          await checkAuth();
-        } catch (error) {
-          console.error('Error verificando autenticación:', error);
-        } finally {
-          setIsInitialLoad(false);
-        }
-      } else {
-        setIsInitialLoad(false);
+    const verify = async () => {
+      try {
+        await checkAuth();
+      } catch (err) {
+        console.error("Error verificando auth:", err);
+      } finally {
+        setInitialCheckDone(true);
       }
     };
+    verify();
+  }, [checkAuth]);
 
-    verifyAuth();
-  }, [isAuthenticated, loading, checkAuth, isInitialLoad]);
-
-  // Mostrar loading mientras se verifica la autenticación
-  if (loading || isInitialLoad) {
+  if (loading || !initialCheckDone) {
     return fallback || <LoadingSpinner />;
   }
 
-  // Si no está autenticado, redirigir al login con la ubicación actual
   if (!isAuthenticated) {
     return (
-      <Navigate 
-        to={redirectTo} 
+      <Navigate
+        to={redirectTo}
         state={{ from: location.pathname + location.search }}
-        replace 
+        replace
       />
     );
   }
 
-  // Verificar rol específico si se requiere
-  if (requiredRole && user?.role !== requiredRole) {
-    console.warn(`Acceso denegado. Rol requerido: ${requiredRole}, rol actual: ${user?.role}`);
-    return (
-      <Navigate 
-        to="/unauthorized" 
-        state={{ requiredRole, currentRole: user?.role }}
-        replace 
-      />
-    );
+  if (allowedRoles && allowedRoles.length > 0) {
+    const hasRole = Array.isArray(allowedRoles)
+      ? allowedRoles.includes(user?.role) || user?.role === "admin"
+      : user?.role === allowedRoles || user?.role === "admin";
+
+    if (!hasRole) {
+      return (
+        <Navigate
+          to="/unauthorized"
+          state={{ allowedRoles, currentRole: user?.role }}
+          replace
+        />
+      );
+    }
   }
 
-  // Usuario autenticado y con permisos, renderizar contenido protegido
   return <Outlet />;
 };
 
-// Variante para rutas que requieren roles específicos
+// Rutas específicas
 export const AdminRoute = ({ fallback, ...props }) => (
-  <ProtectedRoute 
-    requiredRole="admin" 
-    fallback={fallback}
-    {...props} 
-  />
+  <ProtectedRoute allowedRoles="admin" fallback={fallback} {...props} />
 );
 
 export const ModeratorRoute = ({ fallback, ...props }) => (
-  <ProtectedRoute 
-    requiredRole="moderator" 
-    fallback={fallback}
-    {...props} 
-  />
+  <ProtectedRoute allowedRoles="moderator" fallback={fallback} {...props} />
 );
 
-// Hook personalizado para verificar permisos en componentes
+export const MultiRoleRoute = ({ allowedRoles, fallback, ...props }) => (
+  <ProtectedRoute allowedRoles={allowedRoles} fallback={fallback} {...props} />
+);
+
+// Hook para permisos en componentes
 export const usePermissions = () => {
   const { user, isAuthenticated } = useAuth();
 
   return {
-    canAccess: (requiredRole) => {
+    canAccess: (roles) => {
       if (!isAuthenticated || !user) return false;
-      if (!requiredRole) return true;
-      return user.role === requiredRole || user.role === 'admin'; // Admin tiene acceso a todo
+      if (!roles) return true;
+      const roleArray = Array.isArray(roles) ? roles : [roles];
+      return roleArray.includes(user.role) || user.role === "admin";
     },
-    isAdmin: isAuthenticated && user?.role === 'admin',
-    isModerator: isAuthenticated && user?.role === 'moderator',
+    isAdmin: isAuthenticated && user?.role === "admin",
+    isModerator: isAuthenticated && user?.role === "moderator",
     hasRole: (role) => isAuthenticated && user?.role === role
   };
 };

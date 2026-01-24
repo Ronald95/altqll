@@ -1,6 +1,8 @@
+// App.jsx
+import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useAuth } from "./context/AuthContext";
-import ProtectedRoute from "./utils/ProtectedRoute";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import ProtectedRoute, { AdminRoute, ModeratorRoute, MultiRoleRoute } from "./utils/ProtectedRoute";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 
@@ -62,7 +64,7 @@ import ScanDocWeb from "./pages/Pdf_to_scanner/ScanDocWeb";
 import Trabajador_Index from "./pages/Trabajadores/Trabajador_Index";
 
 // ============================================
-// COMPONENTE DE LOADING GLOBAL
+// SPINNER GLOBAL
 // ============================================
 const GlobalLoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -74,115 +76,83 @@ const GlobalLoadingSpinner = () => (
 );
 
 // ============================================
-// COMPONENTE PARA RUTAS PÚBLICAS
+// PUBLIC ROUTE
 // ============================================
-// Redirige a /home si ya está autenticado
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
-  if (loading) {
-    return <GlobalLoadingSpinner />;
-  }
-
-  // Si ya está autenticado, redirigir a home
-  if (isAuthenticated) {
-    return <Navigate to="/home" replace />;
-  }
-
+  if (loading) return <GlobalLoadingSpinner />;
+  if (isAuthenticated) return <Navigate to="/home" replace />;
   return children;
 };
 
 // ============================================
-// COMPONENTE PRINCIPAL
+// APP PRINCIPAL
 // ============================================
 export default function App() {
-  const { loading } = useAuth();
-
-  // Mostrar loading global mientras se verifica la autenticación inicial
-  if (loading) {
-    return <GlobalLoadingSpinner />;
-  }
-
   return (
-    <Router>
-      <ScrollToTop />
-      <Routes>
-        {/* ========================================= */}
-        {/* RUTAS PÚBLICAS                           */}
-        {/* ========================================= */}
-        
-        {/* Página de bienvenida */}
-        <Route path="/" element={<Index />} />
+    <AuthProvider>
+      <Router>
+        <ScrollToTop />
+        <Routes>
 
-        {/* Autenticación - Solo accesibles si NO está autenticado */}
-        <Route 
-          path="/signin" 
-          element={
-            <PublicRoute>
-              <SignIn />
-            </PublicRoute>
-          } 
-        />
-        <Route 
-          path="/signup" 
-          element={
-            <PublicRoute>
-              <SignUp />
-            </PublicRoute>
-          } 
-        />
+          {/* ====================== */}
+          {/* RUTAS PÚBLICAS        */}
+          {/* ====================== */}
+          <Route path="/" element={<Index />} />
+          <Route path="/signin" element={<PublicRoute><SignIn /></PublicRoute>} />
+          <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
 
-        {/* ========================================= */}
-        {/* RUTAS PROTEGIDAS CON LAYOUT              */}
-        {/* ========================================= */}
-        
-        <Route element={<ProtectedRoute />}>
-          <Route element={<AppLayout />}>
-            {/* Dashboard Principal */}
-            <Route path="/home" element={<Home />} />
+          {/* ====================== */}
+          {/* RUTAS PROTEGIDAS       */}
+          {/* ====================== */}
+          <Route element={<ProtectedRoute fallback={<GlobalLoadingSpinner />} />}>
+            <Route element={<AppLayout />}>
 
-            {/* ===== PERFIL Y CONFIGURACIÓN ===== */}
-            <Route path="/profile" element={<UserProfiles />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/blank" element={<Blank />} />
+              {/* Dashboard */}
+              <Route path="/home" element={<Home />} />
 
-            {/* ===== FORMULARIOS ===== */}
-            <Route path="/form-elements" element={<FormElements />} />
+              {/* Otros */}
+              <Route path="/profile" element={<UserProfiles />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/blank" element={<Blank />} />
 
-            {/* ===== TABLAS ===== */}
-            <Route path="/basic-tables" element={<BasicTables />} />
+              {/* Formularios */}
+              <Route path="/form-elements" element={<FormElements />} />
 
-            {/* ===== UI ELEMENTS ===== */}
-            <Route path="/alerts" element={<Alerts />} />
-            <Route path="/avatars" element={<Avatars />} />
-            <Route path="/badge" element={<Badges />} />
-            <Route path="/buttons" element={<Buttons />} />
-            <Route path="/images" element={<Images />} />
-            <Route path="/videos" element={<Videos />} />
+              {/* Tablas */}
+              <Route path="/basic-tables" element={<BasicTables />} />
 
-            {/* ===== GRÁFICOS ===== */}
-            <Route path="/line-chart" element={<LineChart />} />
-            <Route path="/bar-chart" element={<BarChart />} />
+              {/* UI Elements */}
+              <Route path="/alerts" element={<Alerts />} />
+              <Route path="/avatars" element={<Avatars />} />
+              <Route path="/badge" element={<Badges />} />
+              <Route path="/buttons" element={<Buttons />} />
+              <Route path="/images" element={<Images />} />
+              <Route path="/videos" element={<Videos />} />
 
-            {/* ===== PDF SCANNER ===== */}
-            <Route path="/pdf-to-scan" element={<PdfToScan />} />
-            <Route path="/scan-doc" element={<ScanDocWeb />} />
+              {/* Charts */}
+              <Route path="/line-chart" element={<LineChart />} />
+              <Route path="/bar-chart" element={<BarChart />} />
 
-            {/* ===== TRABAJADORES ===== */}
-            <Route path="/trabajadores" element={<Trabajador_Index />} />
+              {/* PDF Scanner */}
+              <Route path="/pdf-to-scan" element={<PdfToScan />} />
+              <Route path="/scan-doc" element={<ScanDocWeb />} />
+
+              {/* Trabajadores */}
+              <Route path="/trabajadores" element={<Trabajador_Index />} />
+
+            </Route>
           </Route>
-        </Route>
 
-        {/* ========================================= */}
-        {/* RUTAS DE ERROR                           */}
-        {/* ========================================= */}
-        
-        {/* Página 404 - Not Found */}
-        <Route path="/404" element={<NotFound />} />
-        
-        {/* Redirect de rutas no encontradas */}
-        <Route path="*" element={<Navigate to="/404" replace />} />
-      </Routes>
-    </Router>
+          {/* ====================== */}
+          {/* ERRORES */}
+          {/* ====================== */}
+          <Route path="/404" element={<NotFound />} />
+          <Route path="*" element={<Navigate to="/404" replace />} />
+
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }

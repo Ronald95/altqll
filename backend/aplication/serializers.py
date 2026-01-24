@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from aplication.models import Trabajador, CategoriaCertificado, CategoriaEspecialidad, Especialidad, EspecialidadImagen, CategoriaCurso, Certificado, Curso
+from aplication.models import Trabajador, CategoriaCertificado, CategoriaEspecialidad, Especialidad, EspecialidadImagen, CategoriaCurso, Certificado, Curso, ProcessedPDF
 from django.conf import settings
 
 
@@ -10,6 +10,12 @@ class PDFUploadSerializer(serializers.Serializer):
         if value.content_type not in ["application/pdf"]:
             raise serializers.ValidationError("El archivo debe ser un PDF.")
         return value
+
+class ProcessedPDFSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProcessedPDF
+        fields = ["id", "original_name", "output_name", "file_path", "file_size", "created_at"]
+
 
 class CategoriaEspecialidadSerializer(serializers.ModelSerializer):
     class Meta:

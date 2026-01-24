@@ -1,7 +1,7 @@
 # aplication/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import TrabajadorViewSet, PDFProcessView, EspecialidadViewSet, EspecialidadImagenViewSet, CategoriaEspecialidadViewSet, CategoriaCertificadoViewSet, CategoriaCursoViewSet, CertificadoViewSet, CursoViewSet
+from .views import TrabajadorViewSet, PDFViewSet, EspecialidadViewSet, EspecialidadImagenViewSet, CategoriaEspecialidadViewSet, CategoriaCertificadoViewSet, CategoriaCursoViewSet, CertificadoViewSet, CursoViewSet
 
 # Routers para ViewSets
 router = DefaultRouter()
@@ -13,8 +13,8 @@ router.register(r'categorias_certificado', CategoriaCertificadoViewSet, basename
 router.register(r'categorias_curso', CategoriaCursoViewSet, basename='categorias_curso')
 router.register(r'certificados', CertificadoViewSet, basename='certificados')
 router.register(r'cursos', CursoViewSet, basename='cursos')
+router.register(r'procesar-pdf', PDFViewSet, basename='procesar-pdf')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('procesar-pdf/', PDFProcessView.as_view(), name='procesar_pdf'),
 ]

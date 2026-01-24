@@ -7,3 +7,4 @@ from .CategoriaCertificado import CategoriaCertificado
 from .Especialidad import Especialidad
 from .EspecialidadImagen import EspecialidadImagen
 from .CategoriaEspecialidad import CategoriaEspecialidad
+from .ProcessedPDF import ProcessedPDF

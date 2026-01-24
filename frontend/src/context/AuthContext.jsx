@@ -1,123 +1,108 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
-import { authService, loggedOut as clientLoggedOut } from "../utils/auth";
+// AuthContext.jsx
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { authService, checkInitialAuth } from "../utils/auth";
 
-const AuthContext = createContext();
+// Export nombrado
+export const AuthContext = createContext();
 
-export function AuthProvider({ children }) {
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [loggedOut, setLoggedOut] = useState(clientLoggedOut);
 
-  const clearAuthState = useCallback(() => {
-    setUser(null);
-    setIsAuthenticated(false);
-    setError(null);
-  }, []);
-
-  const setAuthState = useCallback((userData) => {
-    setUser(userData);
-    setIsAuthenticated(true);
-    setError(null);
-  }, []);
-
-  const checkAuth = useCallback(async (retryCount = 0) => {
-    if (loggedOut) return false;
+  // Inicialización de auth al cargar la app
+  const initializeAuth = useCallback(async () => {
+    setLoading(true);
     try {
-      const isAuth = await authService.verifyAuth();
-      if (!isAuth) {
-        clearAuthState();
-        return false;
+      const valid = await checkInitialAuth();
+      if (valid) {
+        const userData = await authService.getUserData();
+        setUser(userData);
+        setIsAuthenticated(true);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
       }
-      const userData = await authService.getUserData();
-      setAuthState(userData);
-      return true;
     } catch (err) {
-      if (loggedOut) return false;
-      if (err.response?.status === 401 && retryCount < 2) {
-        const refreshSuccess = await authService.refreshToken();
-        if (refreshSuccess) return await checkAuth(retryCount + 1);
-      }
-      clearAuthState();
-      return false;
+      console.error("Error inicializando auth:", err);
+      setUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
     }
-  }, [setAuthState, clearAuthState, loggedOut]);
+  }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-    checkAuth().finally(() => { if (isMounted) setLoading(false); });
-    return () => { isMounted = false; };
-  }, [checkAuth]);
+    initializeAuth();
+  }, [initializeAuth]);
 
+  // Login
   const login = async (username, password) => {
     setLoading(true);
-    setError(null);
-    setLoggedOut(false);
     try {
-      await authService.login(username, password);
-      const authSuccess = await checkAuth();
-      if (!authSuccess) throw new Error("Error al verificar autenticación después del login");
-      return { success: true };
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message;
-      setError(errorMessage);
-      clearAuthState();
-      return { success: false, error: errorMessage };
-    } finally { setLoading(false); }
+      const data = await authService.login(username, password);
+      setUser(data.user);
+      setIsAuthenticated(true);
+      return data;
+    } catch (err) {
+      setUser(null);
+      setIsAuthenticated(false);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Logout
   const logout = async () => {
     setLoading(true);
-    setLoggedOut(true);
-    try { await authService.logout(); } catch(e){ console.error(e); }
-    finally { clearAuthState(); setLoading(false); }
-  };
-
-  const refreshUserData = async () => {
-    if (!isAuthenticated || loggedOut) return null;
     try {
-      const userData = await authService.getUserData();
-      setUser(userData);
-      return userData;
-    } catch (error) {
-      if (error.response?.status === 401) await checkAuth();
-      throw error;
+      await authService.logout();
+    } catch (err) {
+      console.warn("Error en logout:", err);
+    } finally {
+      setUser(null);
+      setIsAuthenticated(false);
+      setLoading(false);
     }
   };
 
-  const handleAuthError = useCallback(async (error) => {
-    if (loggedOut) return false;
-    if (error.response?.status === 401) {
-      const isValid = await checkAuth();
-      if (!isValid) clearAuthState();
-      return isValid;
+  // Re-verificar autenticación
+  const checkAuth = useCallback(async () => {
+    setLoading(true);
+    try {
+      const valid = await authService.verifyAuth();
+      if (valid) {
+        const userData = await authService.getUserData();
+        setUser(userData);
+        setIsAuthenticated(true);
+        return true;
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+        return false;
+      }
+    } catch (err) {
+      console.error("Error verificando auth:", err);
+      setUser(null);
+      setIsAuthenticated(false);
+      return false;
+    } finally {
+      setLoading(false);
     }
-    return true;
-  }, [checkAuth, clearAuthState, loggedOut]);
+  }, []);
 
-  const contextValue = useMemo(() => ({
+  const value = {
     user,
     isAuthenticated,
     loading,
-    error,
     login,
     logout,
-    refreshUserData,
-    checkAuth,
-    handleAuthError,
-    clearError: () => setError(null),
-    hasRole: (role) => user?.role === role,
-    isAdmin: user?.role === 'admin',
-    canAccess: (requiredRole) => !requiredRole || user?.role === requiredRole || user?.role === 'admin'
-  }), [user, isAuthenticated, loading, error, login, logout, refreshUserData, checkAuth, handleAuthError]);
+    checkAuth
+  };
 
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
-}
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth debe usarse dentro de un AuthProvider");
-  return context;
-}
+// Hook personalizado
+export const useAuth = () => useContext(AuthContext);
