@@ -4,13 +4,12 @@ import { Modal } from "../../components/ui/modal";
 import { useModal } from "../../hooks/useModal";
 import TableTrabajadores from "../../components/ui/table/trabajadores/TableTrababajadores";
 import TrabajadoresAPI from "../../api/trabajadores";
-import DeleteConfirmModal from "../../components/ui/modal/dialog/DeleteConfirm"; // <-- IMPORTANTE
+import DeleteConfirmModal from "../../components/ui/modal/dialog/DeleteConfirm";
 import FormTrabajadores from "../../components/ui/modal/trabajadores/FormTrabajadores";
 import FormDetalleTrabajador from "../../components/ui/modal/trabajadores/FormDetalleTrabajador";
 
 export default function Trabajador_Index() {
   const [trabajadores, setTrabajadores] = useState([]);
-  const [naveInfo, setNaveInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState(null);
 
@@ -21,16 +20,16 @@ export default function Trabajador_Index() {
     closeModal: closeModalTrabajador,
   } = useModal();
 
-  const [deleteModalOpen, setDeleteModalOpen] = React.useState(false);
-  const [itemToDelete, setItemToDelete] = React.useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
-  // 🔹 Abrir modal de confirmación
+  // Abrir modal de confirmación
   const confirmDelete = (item) => {
     setItemToDelete(item);
     setDeleteModalOpen(true);
   };
 
-  // 🔹 Eliminar definitivamente luego de confirmar
+  // Eliminar registro
   const handleDelete = async () => {
     if (!itemToDelete) return;
     try {
@@ -39,13 +38,13 @@ export default function Trabajador_Index() {
       console.log("Eliminado correctamente");
     } catch (error) {
       console.error("Error eliminando:", error);
+    } finally {
+      setDeleteModalOpen(false);
+      setItemToDelete(null);
     }
-
-    setDeleteModalOpen(false); // cerrar modal
-    setItemToDelete(null); // limpiar estado
   };
 
-  // 🔹 Cargar registros de pirotecnia
+  // Cargar registros
   useEffect(() => {
     const fetchTrabajadores = async () => {
       try {
@@ -53,28 +52,27 @@ export default function Trabajador_Index() {
         const response = await TrabajadoresAPI.list();
         setTrabajadores(response);
       } catch (error) {
-        console.error("Error al cargar pirotecnia:", error);
+        console.error("Error al cargar trabajadores:", error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchTrabajadores();
   }, []);
 
-  // 🔹 Abrir modal en modo edición
+  // Abrir modal de edición
   const handleEdit = (item) => {
     setEditingItem(item);
     openModal();
   };
 
-  // 🔹 Abrir modal en modo edición
+  // Abrir modal de detalle
   const handleSelectedItem = (item) => {
     setEditingItem(item);
     openModalTrabajador();
   };
 
-  // 🔹 Actualizar lista luego de guardar/editar
+  // Actualizar lista luego de guardar/editar
   const handleTrabajadoresUpdated = (newItem) => {
     setTrabajadores((prev) => {
       if (newItem.isUpdated && newItem.id) {
@@ -87,23 +85,23 @@ export default function Trabajador_Index() {
     setEditingItem(null);
   };
 
-  // 🔹 Cerrar modal de formulario
+  // Cerrar modal
   const handleCloseModal = () => {
     closeModal();
     setEditingItem(null);
   };
 
   return (
-    <div className="max-full mx-auto p-6 bg-gray-50 min-h-screen">
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+    <div className="w-full min-h-screen bg-gray-50 p-4 sm:p-6">
+      <div className="w-full max-w-full mx-auto flex flex-col gap-4">
         {/* Encabezado */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 text-white">
             <FileText className="h-7 w-7" />
             <div>
-              <h1 className="text-2xl font-bold">Trabajadores</h1>
-              <p className="text-blue-100 text-sm">
-                Listado de trabajadores 
+              <h1 className="text-xl sm:text-2xl font-bold">Trabajadores</h1>
+              <p className="text-blue-100 text-sm sm:text-base">
+                Listado de trabajadores
               </p>
             </div>
           </div>
@@ -113,17 +111,17 @@ export default function Trabajador_Index() {
               setEditingItem(null);
               openModal();
             }}
-            className={`px-4 py-2.5 rounded-lg flex items-center gap-2 font-semibold transition-all shadow-md hover:shadow-lg ${"bg-white text-blue-600 hover:bg-blue-50"}`}
+            className="px-4 py-2.5 rounded-lg flex items-center gap-2 font-semibold transition-all shadow-md hover:shadow-lg bg-white text-blue-600 hover:bg-blue-50 self-start sm:self-auto"
           >
             <Plus className="h-5 w-5" /> Nuevo registro
           </button>
         </div>
 
         {/* Tabla */}
-        <div className="p-6">
+        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 overflow-x-auto">
           {loading ? (
-            <div className="text-center text-slate-500 py-10">
-              Cargando registros...
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-b-4 border-gray-300"></div>
             </div>
           ) : (
             <TableTrabajadores
@@ -131,6 +129,7 @@ export default function Trabajador_Index() {
               onEdit={handleEdit}
               onDelete={confirmDelete}
               selectedItem={handleSelectedItem}
+              loading={loading}
             />
           )}
         </div>
