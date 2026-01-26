@@ -8,19 +8,28 @@ import FormEspecialidad from "./FormEspecialidad";
 import FormCursos from "./FormCursos";
 import FormCertificados from "./FormCertificados";
 import TrabajadoresAPI from "../../../../api/trabajadores";
-import TablaEspecialidades from "../../table/trabajadores/TablaEspecialidades";
-import TablaCursos from "../../table/trabajadores/TablaCursos";
-import TablaCertificados from "../../table/trabajadores/TablaCertificados";
-
+import DashboardTrabajador from "../../table/trabajadores/DashboardTrabajador";
 
 export default function FormDetalleTrabajador({ isOpen, item, onClose }) {
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { isOpen: isOpenEspecialidad, openModal: openModalEspecialidad, closeModal: closeModalEspecialidad } = useModal();
-  const { isOpen: isOpenCursos, openModal: openModalCursos, closeModal: closeModalCursos } = useModal();
-  const { isOpen: isOpenCertificados, openModal: openModalCertificados, closeModal: closeModalCertificados } = useModal();
-  const [data , setData] = useState([]);
+  const {
+    isOpen: isOpenEspecialidad,
+    openModal: openModalEspecialidad,
+    closeModal: closeModalEspecialidad,
+  } = useModal();
+  const {
+    isOpen: isOpenCursos,
+    openModal: openModalCursos,
+    closeModal: closeModalCursos,
+  } = useModal();
+  const {
+    isOpen: isOpenCertificados,
+    openModal: openModalCertificados,
+    closeModal: closeModalCertificados,
+  } = useModal();
+  const [data, setData] = useState([]);
   const [dataCertificados, setDataCertificados] = useState([]);
   const [dataCursos, setDataCursos] = useState([]);
   const [dataEspecialidades, setDataEspecialidades] = useState([]);
@@ -28,71 +37,73 @@ export default function FormDetalleTrabajador({ isOpen, item, onClose }) {
   // Si no hay trabajador, no renderizar
   if (!item) return null;
 
-      // Cargar tipos de matrícula
-    useEffect(() => {
-      if (!isOpen) return;
-      
-      console.log(item.rut);
-      const fetchTipos = async () => {
-        setLoading(true);
-        try {
-          const response = await TrabajadoresAPI.getTrabajadorId(item.id);
-          setData(response);
-        } catch (err) {
-          console.error(err);
-          setError("No se pudieron cargar los tipos de matrícula.");
-        } finally {
-          setLoading(false);
-        }
-      };
-  
-      fetchTipos();
-    }, [isOpen]);
+  // Cargar tipos de matrícula
+  useEffect(() => {
+    if (!isOpen) return;
 
+    console.log(item.rut);
+    const fetchTipos = async () => {
+      setLoading(true);
+      try {
+        const response = await TrabajadoresAPI.getTrabajadorId(item.id);
+        setData(response);
+        console.log("response", response);
+      } catch (err) {
+        console.error(err);
+        setError("No se pudieron cargar los tipos de matrícula.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchTipos();
+  }, [isOpen]);
 
-useEffect(() => {
-  if (!data) return;
+  useEffect(() => {
+    if (!data) return;
+    // --------------------
+    // Certificados
+    // --------------------
+    const certificados = (data.certificados || []).map((c) => ({
+      id: c.id,
+      codigo: c.categoria?.codigo || "",
+      nombre: c.categoria?.nombre || "",
+      fecha_vigencia: c.fecha_vigencia || "",
+      user: c.user || "",
+    }));
 
-  // --------------------
-  // Certificados
-  // --------------------
-  const certificados = (data.certificados || []).map((c) => ({
-    id: c.id,
-    codigo: c.categoria?.codigo || "",
-    nombre: c.categoria?.nombre || "",
-    fecha_vigencia: c.fecha_vigencia || "",
-    user: c.user || "",
-  }));
-  setDataCertificados(certificados);
+    console.log("certificados", certificados);
+    setDataCertificados(certificados);
 
-  // --------------------
-  // Cursos
-  // --------------------
-  const cursos = (data.cursos || []).map((c) => ({
-    id: c.id,
-    codigo: c.categoria?.codigo || "",
-    nombre: c.categoria?.nombre || "",
-    fecha_vigencia: c.fecha_vigencia || "",
-    user: c.user || "",
-    estado: c.estado || "",
-  }));
-  setDataCursos(cursos);
+    // --------------------
+    // Cursos
+    // --------------------
+    const cursos = (data.cursos || []).map((c) => ({
+      id: c.id,
+      codigo: c.categoria?.codigo || "",
+      nombre: c.categoria?.nombre || "",
+      fecha_vigencia: c.fecha_vigencia || "",
+      user: c.user || "",
+      estado: c.estado || "",
+    }));
+    console.log("certificados", cursos);
+    setDataCursos(cursos);
 
-  // --------------------
-  // Especialidades
-  // --------------------
-  const especialidades = (data.especialidades || []).map((e) => ({
-    id: e.id,
-    codigo: e.categoria?.codigo || "",
-    nombre: e.categoria?.nombre || "",
-    fecha_vigencia: e.fecha_vigencia || "",
-    observacion: e.observacion || "",
-    user: e.user || "",
-  }));
-  setDataEspecialidades(especialidades);
-}, [item]);
+    // --------------------
+    // Especialidades
+    // --------------------
+    const especialidades = (data.especialidades || []).map((e) => ({
+      id: e.id,
+      codigo: e.categoria?.codigo || "",
+      nombre: e.categoria?.nombre || "",
+      fecha_vigencia: e.fecha_vigencia || "",
+      observacion: e.observacion || "",
+      user: e.user || "",
+    }));
 
+    console.log("especialidades", especialidades);
+    setDataEspecialidades(especialidades);
+  }, [data]);
 
   return (
     <div className="p-6 max-h-[90vh] overflow-y-auto">
@@ -138,48 +149,26 @@ useEffect(() => {
           Nueva especialidad
         </button>
 
-        <button onClick={() => openModalCursos()} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl shadow-md transition">
+        <button
+          onClick={() => openModalCursos()}
+          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl shadow-md transition"
+        >
           <HiOutlineBookOpen className="h-5 w-5" />
           Nuevo curso
         </button>
-        <button onClick={() => openModalCertificados()} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl shadow-md transition">
+        <button
+          onClick={() => openModalCertificados()}
+          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl shadow-md transition"
+        >
           <HiOutlineBookOpen className="h-5 w-5" />
           Nuevo certificado
         </button>
       </div>
-
-      {/* Tabla Matrículas */}
-      <div className="mb-10">
-        <h3 className="text-lg font-bold text-gray-800 mb-3">
-          Matrículas del Trabajador
-        </h3>
-
-        <div className="bg-white p-4 rounded-xl shadow">
-          <TablaEspecialidades data={dataEspecialidades} />
-        </div>
-      </div>
-
-      {/* Tabla Cursos */}
-      <div className="mb-10">
-        <h3 className="text-lg font-bold text-gray-800 mb-3">
-          Cursos del Trabajador
-        </h3>
-
-        <div className="bg-white p-4 rounded-xl shadow">
-          <TablaCursos data={dataCursos}/>
-        </div>
-      </div>
-      {/* Tabla Certificados */}
-      <div className="mb-10">
-        <h3 className="text-lg font-bold text-gray-800 mb-3">
-          Certificados del Trabajador
-        </h3>
-
-        <div className="bg-white p-4 rounded-xl shadow">
-          <TablaCertificados data={dataCertificados} />
-        </div>
-      </div>
-
+      <DashboardTrabajador
+        certificados={dataCertificados}
+        cursos={dataCursos}
+        especialidades={dataEspecialidades}
+      />
       <div className="text-right">
         <button
           onClick={onClose}
@@ -213,19 +202,19 @@ useEffect(() => {
         />
       </Modal>
       <Modal
-  isOpen={isOpenCertificados}
-  onClose={closeModalCertificados}
-  className="w-[80vw] max-w-[800px] max-h-[80vh] mx-auto p-0"
->
-  <div className="h-full overflow-y-auto">
-    <FormCertificados
-      isOpen={isOpenCertificados}
-      item={item}
-      onClose={closeModalCertificados}
-      trabajador={item.id}
-    />
-  </div>
-</Modal>
+        isOpen={isOpenCertificados}
+        onClose={closeModalCertificados}
+        className="w-[80vw] max-w-[800px] max-h-[80vh] mx-auto p-0"
+      >
+        <div className="h-full overflow-y-auto">
+          <FormCertificados
+            isOpen={isOpenCertificados}
+            item={item}
+            onClose={closeModalCertificados}
+            trabajador={item.id}
+          />
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -6,22 +6,20 @@ import {
   Sparkles,
   User,
   CreditCard,
-  Briefcase,
   Mail,
-  Users,
   Phone,
   FileText,
-  Hash,
-  MessageSquare,
+  Users,
   X,
 } from "lucide-react";
 import { MdDeleteOutline } from "react-icons/md";
 
-
-const TableTrabajadores = ({ data, onEdit, onDelete ,selectedItem }) => {
+// --- Componente Principal ---
+const TableTrabajadores = ({ data = [], onEdit, onDelete, selectedItem, loading = false }) => {
   const [filteredData, setFilteredData] = useState([]);
   const [searchText, setSearchText] = useState("");
 
+  // Filtrar datos
   useEffect(() => {
     setFilteredData(data);
   }, [data]);
@@ -44,11 +42,20 @@ const TableTrabajadores = ({ data, onEdit, onDelete ,selectedItem }) => {
 
   const clearSearch = () => setSearchText("");
 
-  // Estilos personalizados de la tabla
+  // --- Spinner mientras carga ---
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-b-4 border-gray-300"></div>
+      </div>
+    );
+  }
+
+  // --- Estilos personalizados ---
   const customStyles = {
-    table: {
+    tableWrapper: {
       style: {
-        backgroundColor: "transparent",
+        overflowX: "auto", // Scroll horizontal en móviles
       },
     },
     headRow: {
@@ -56,23 +63,22 @@ const TableTrabajadores = ({ data, onEdit, onDelete ,selectedItem }) => {
         backgroundColor: "#f0fdf4",
         borderBottom: "2px solid #bbf7d0",
         minHeight: "56px",
-        borderRadius: "0",
       },
     },
     headCells: {
       style: {
-        fontSize: "13px",
+        fontSize: "12px",
         fontWeight: "700",
         textTransform: "uppercase",
         color: "#166534",
-        paddingLeft: "16px",
-        paddingRight: "16px",
+        paddingLeft: "12px",
+        paddingRight: "12px",
         letterSpacing: "0.05em",
       },
     },
     rows: {
       style: {
-        minHeight: "64px",
+        minHeight: "56px",
         fontSize: "14px",
         color: "#1e293b",
         borderBottom: "1px solid #f1f5f9",
@@ -87,8 +93,8 @@ const TableTrabajadores = ({ data, onEdit, onDelete ,selectedItem }) => {
     },
     cells: {
       style: {
-        paddingLeft: "16px",
-        paddingRight: "16px",
+        paddingLeft: "8px",
+        paddingRight: "8px",
       },
     },
     pagination: {
@@ -121,126 +127,64 @@ const TableTrabajadores = ({ data, onEdit, onDelete ,selectedItem }) => {
     },
   };
 
-  // Columnas
+  // --- Columnas adaptativas ---
   const columns = [
     {
-      name: (
-        <div className="flex items-center gap-2">
+      name: <div className="flex items-center gap-2"><User className="h-4 w-4 text-green-600" />Nombre</div>,
+      selector: row => row.nombre,
+      sortable: true,
+      cell: row => (
+        <div className="flex items-center gap-2 sm:gap-3 py-2">
           <User className="h-4 w-4 text-green-600" />
-          <span>Nombre</span>
-        </div>
-      ),
-      selector: (row) => row.nombre,
-      sortable: true,
-      cell: (row) => (
-        <div className="flex items-center gap-3 py-2">
-          <div className="bg-lineargradient-to-br from-green-100 to-emerald-100 p-2.5 rounded-xl shadow-sm">
-            <User className="h-4 w-4 text-green-600" />
-          </div>
-          <span className="font-semibold text-slate-800">
-            {row.nombre || "—"}
-          </span>
+          <span className="font-medium text-slate-800">{row.nombre || "—"}</span>
         </div>
       ),
     },
     {
-      name: (
-        <div className="flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-green-600" />
-          <span>Rut</span>
-        </div>
-      ),
-      selector: (row) => row.rut,
+      name: <div className="flex items-center gap-2"><CreditCard className="h-4 w-4 text-green-600" />Rut</div>,
+      selector: row => row.rut,
       sortable: true,
-      cell: (row) => (
-        <div className="flex items-center gap-3 py-2">
-          <div className="bg-linear-gradient-to-br from-blue-100 to-cyan-100 p-2.5 rounded-xl shadow-sm">
-            <CreditCard className="h-4 w-4 text-blue-600" />
-          </div>
-          <span className="font-medium text-slate-700">{row.rut || "—"}</span>
-        </div>
-      ),
-    },
-
-    {
-      name: (
-        <div className="flex items-center gap-2">
-          <Mail className="h-4 w-4 text-green-600" />
-          <span>Correo</span>
-        </div>
-      ),
-      selector: (row) => row.correo,
-      sortable: true,
-      width: "200px",
-      cell: (row) => (
-        <div className="flex items-center gap-2">
-          <Mail className="h-4 w-4 text-slate-400" />
-          <span className="text-slate-600 text-sm">{row.correo || "—"}</span>
+      cell: row => (
+        <div className="flex items-center gap-2 sm:gap-3 py-2">
+          <CreditCard className="h-4 w-4 text-blue-600" />
+          <span className="text-slate-700">{row.rut || "—"}</span>
         </div>
       ),
     },
     {
-      name: (
-        <div className="flex items-center gap-2">
-          <Phone className="h-4 w-4 text-green-600" />
-          <span>Teléfono</span>
-        </div>
-      ),
-      selector: (row) => row.telefono,
+      name: <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-green-600" />Correo</div>,
+      selector: row => row.correo,
+      sortable: true,
+      omit: window.innerWidth < 640, // ocultar en móviles
+      cell: row => <span className="text-slate-600 text-sm">{row.correo || "—"}</span>,
+    },
+    {
+      name: <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-green-600" />Teléfono</div>,
+      selector: row => row.telefono,
       sortable: true,
       width: "150px",
-      cell: (row) => (
-        <div className="flex items-center gap-2">
-          <Phone className="h-4 w-4 text-slate-400" />
-          <span className="text-slate-600 text-sm font-medium">
-            {row.telefono || "—"}
-          </span>
-        </div>
-      ),
+      cell: row => <span className="text-slate-600 text-sm">{row.telefono || "—"}</span>,
     },
     {
-      name: (
-        <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-green-600" />
-          <span>Observación</span>
-        </div>
-      ),
-      selector: (row) => row.observacion || "—",
-      sortable: false,
-      cell: (row) => (
-        <span
-          className="text-slate-500 text-sm truncate"
-          title={row.observacion}
-        >
+      name: <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-green-600" />Observación</div>,
+      selector: row => row.observacion || "—",
+      omit: window.innerWidth < 640, // ocultar en móviles
+      cell: row => (
+        <span className="text-slate-500 text-sm truncate" title={row.observacion}>
           {row.observacion || "—"}
         </span>
       ),
     },
     {
       name: "Acciones",
-      width: "140px",
-      cell: (row) => (
-        <div className="flex gap-2 items-center justify-center">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(row);
-            }}
-            className="p-2 hover:bg-green-50 rounded-xl transition-all hover:scale-110 group"
-            title="Editar"
-          >
-            <Edit className="h-5 w-5 text-green-600 group-hover:text-green-700" />
+      width: "120px",
+      cell: row => (
+        <div className="flex gap-1 sm:gap-2 items-center justify-center">
+          <button onClick={e => { e.stopPropagation(); onEdit(row); }} className="p-2 hover:bg-green-50 rounded-xl transition-all hover:scale-110">
+            <Edit className="h-5 w-5 text-green-600" />
           </button>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(row);
-            }}
-            className="p-2 hover:bg-red-50 rounded-xl transition-all hover:scale-110 group"
-            title="Eliminar"
-          >
-            <MdDeleteOutline className="h-5 w-5 text-red-600 group-hover:text-red-700" />
+          <button onClick={e => { e.stopPropagation(); onDelete(row); }} className="p-2 hover:bg-red-50 rounded-xl transition-all hover:scale-110">
+            <MdDeleteOutline className="h-5 w-5 text-red-600" />
           </button>
         </div>
       ),
@@ -250,23 +194,19 @@ const TableTrabajadores = ({ data, onEdit, onDelete ,selectedItem }) => {
   const paginationOptions = {
     rowsPerPageText: "Filas por página:",
     rangeSeparatorText: "de",
-    noRowsPerPage: false,
-    selectAllRowsItem: false,
   };
 
   return (
     <div className="bg-white rounded-2xl shadow-xl border-2 border-slate-200 overflow-hidden">
       {/* Header con búsqueda */}
-      <div className="bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 p-6 border-b-2 border-green-200">
-        <div className="flex items-center gap-4 mb-4">
+      <div className="bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 p-4 sm:p-6 border-b-2 border-green-200">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
           <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-3 rounded-xl shadow-lg">
             <Users className="h-6 w-6 text-white" />
           </div>
           <div className="flex-1">
-            <h3 className="text-xl font-bold text-slate-800">
-              Registro de Trabajadores
-            </h3>
-            <p className="text-sm text-slate-600 mt-1">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-800">Registro de Trabajadores</h3>
+            <p className="text-sm sm:text-base text-slate-600 mt-1">
               Total de registros:{" "}
               <span className="font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-lg">
                 {data.length}
@@ -275,17 +215,17 @@ const TableTrabajadores = ({ data, onEdit, onDelete ,selectedItem }) => {
           </div>
         </div>
 
-        {/* Barra de búsqueda mejorada */}
-        <div className="relative">
+        {/* Barra de búsqueda */}
+        <div className="relative w-full mb-2">
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
             <Search className="h-5 w-5" />
           </div>
           <input
             type="text"
-            className="w-full pl-12 pr-12 py-3.5 border-2 border-green-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all text-slate-700 placeholder:text-slate-400 bg-white shadow-sm hover:shadow-md"
-            placeholder="Buscar por nombre, rut, cargo, correo o teléfono..."
+            className="w-full pl-12 pr-12 py-3 border-2 border-green-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all text-slate-700 placeholder:text-slate-400 bg-white shadow-sm hover:shadow-md"
+            placeholder="Buscar por nombre, rut, correo o teléfono..."
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={e => setSearchText(e.target.value)}
           />
           {searchText && (
             <button
@@ -298,12 +238,11 @@ const TableTrabajadores = ({ data, onEdit, onDelete ,selectedItem }) => {
           )}
         </div>
 
-        {/* Indicador de resultados filtrados */}
+        {/* Indicador resultados */}
         {searchText && (
-          <div className="mt-3 flex items-center gap-2 text-sm">
+          <div className="mt-2 flex items-center gap-2 text-sm">
             <div className="bg-green-100 text-green-700 px-3 py-1 rounded-lg font-semibold">
-              {filteredData.length}{" "}
-              {filteredData.length === 1 ? "resultado" : "resultados"}
+              {filteredData.length} {filteredData.length === 1 ? "resultado" : "resultados"}
             </div>
             {filteredData.length !== data.length && (
               <span className="text-slate-600">de {data.length} total</span>
@@ -318,7 +257,7 @@ const TableTrabajadores = ({ data, onEdit, onDelete ,selectedItem }) => {
         data={filteredData}
         pagination
         paginationPerPage={10}
-        paginationRowsPerPageOptions={[5, 10, 15, 20, 30]}
+        paginationRowsPerPageOptions={[5, 10, 15, 20]}
         paginationComponentOptions={paginationOptions}
         noDataComponent={
           <div className="flex flex-col items-center justify-center py-16">
@@ -329,15 +268,13 @@ const TableTrabajadores = ({ data, onEdit, onDelete ,selectedItem }) => {
               No se encontraron registros
             </h4>
             <p className="text-sm text-slate-500">
-              {searchText
-                ? "Intenta con otros términos de búsqueda"
-                : "No hay registros de trabajadores disponibles"}
+              {searchText ? "Intenta con otros términos de búsqueda" : "No hay registros de trabajadores disponibles"}
             </p>
           </div>
         }
         highlightOnHover
         pointerOnHover
-        onRowClicked={(row) => selectedItem(row)}
+        onRowClicked={row => selectedItem(row)}
         customStyles={customStyles}
       />
     </div>

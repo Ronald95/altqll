@@ -204,18 +204,22 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 
+
+
 # ------------------------------------------------------------------------------
-# CSP (FORMATO NUEVO django-csp >= 4.0)
+# CSP - PROD (Django + Render)
 # ------------------------------------------------------------------------------
+ENV = os.getenv("VERCEL_ENV", "development")  # 'development', 'preview', 'production'
+
 CONTENT_SECURITY_POLICY = {
     "DIRECTIVES": {
         "default-src": ["'self'"],
         "script-src": ["'self'"],
-        "style-src": ["'self'", "'unsafe-inline'"],
+        "style-src": ["'self'", "https://fonts.googleapis.com"] + (["'unsafe-inline'"] if ENV != "production" else []),
+        "font-src": ["'self'", "https://fonts.gstatic.com"] + (["data:"] if ENV != "production" else []),
         "img-src": ["'self'", "data:", "https:"],
-        "font-src": ["'self'", "data:"],
-        "connect-src": ["'self'"],  # Se actualizará por entorno
-        "frame-ancestors": ["'none'"],
+        "connect-src": ["'self'", "https://altqll-backend.onrender.com"] + (["http://localhost:5173", "http://localhost:8000", "ws://localhost:5173"] if ENV != "production" else []),
+        "frame-ancestors": ["'none'"]
     }
 }
 
