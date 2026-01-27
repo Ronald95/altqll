@@ -1,14 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import SelectReact from "react-select";
-import {
-  CreditCard,
-  Image,
-  Calendar,
-  MessageSquare,
-  CheckSquare,
-  X,
-} from "lucide-react";
+import { CreditCard, Image, Calendar, MessageSquare } from "lucide-react";
 import LoaderError from "../../../loading/LoaderError";
 import MatriculasAPI from "../../../../api/especialidades";
 import EspecialidadesAPI from "../../../../api/especialidades";
@@ -16,7 +9,7 @@ import Input from "../../../form/input/InputField";
 import Label from "../../../form/Label";
 import ImageCropPolygon from "../../images/ImageCropPolygon";
 
-const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
+const FormEspecialidad = ({ isOpen, onClose, data, trabajador }) => {
   const {
     register,
     handleSubmit,
@@ -25,7 +18,7 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
     formState: { errors },
   } = useForm({
     defaultValues: {
-      tipo_matricula: null,
+      tipo_especialidad: null,
       fecha_vigencia: "",
       foto_frontal: null,
       foto_trasera: null,
@@ -34,7 +27,7 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
     },
     mode: "onChange",
   });
- if (!item) return null;
+
   const [tipos, setTipos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -43,70 +36,72 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
   const [frontalFile, setFrontalFile] = useState(null);
   const [croppedImage, setCroppedImage] = useState(null);
 
+  const isEdit = Boolean(data?.id);
 
-
-    // Cargar tipos de matrícula
-    useEffect(() => {
-      if (!isOpen) return;
-  
-      const fetchTipos = async () => {
-        setLoading(true);
-        try {
-          const data = await EspecialidadesAPI.getCategoriasEspecialidadesForSelect();
-          setTipos(data);
-        } catch (err) {
-          console.error(err);
-          setError("No se pudieron cargar los tipos de matrícula.");
-        } finally {
-          setLoading(false);
-        }
-      };
-  
-      fetchTipos();
-    }, [isOpen]);
-
-  // Editar matrícula
+  // Cargar tipos de matrícula
   useEffect(() => {
-    if (item) {
+    if (!isOpen) return;
+
+    const fetchTipos = async () => {
+      setLoading(true);
+      try {
+        const data = await EspecialidadesAPI.getCategoriasEspecialidadesForSelect();
+        setTipos(data);
+      } catch (err) {
+        console.error(err);
+        setError("No se pudieron cargar los tipos de matrícula.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTipos();
+  }, [isOpen]);
+
+  // Llenar formulario si estamos editando
+  useEffect(() => {
+    if (data) {
       reset({
-        tipo_matricula: item.tipo_data
-          ? { value: item.tipo_data.id, label: item.tipo_data.nombre }
+        tipo_especialidad: data.codigo
+          ? { value: data.codigo, label: data.nombre }
           : null,
-        fecha_vigencia: item.fecha_vigencia || "",
-        observacion: item.observacion || "",
-        predeterminada: item.predeterminada || false,
+        fecha_vigencia: data.fecha_vigencia || "",
+        observacion: data.observacion || "",
+        predeterminada: data.predeterminada || false,
       });
+      if (data.foto_frontal) setCroppedImage(data.foto_frontal);
     } else {
       reset();
+      setFrontalFile(null);
+      setCroppedImage(null);
     }
-  }, [item, reset]);
+  }, [data, reset]);
 
   const onSubmit = async (data) => {
+    if (!trabajador?.id) return;
+
     try {
       setSubmitLoading(true);
 
       const formData = new FormData();
       formData.append("trabajador", trabajador.id);
-      formData.append("tipo_matricula", data.tipo_matricula?.value);
+      formData.append("tipo_especialidad", data.tipo_especialidad?.value);
       formData.append("fecha_vigencia", data.fecha_vigencia);
-      formData.append("observacion", data.observacion || "");
+      formData.append("observacion", data.observacion || "");      
       formData.append("predeterminada", data.predeterminada);
 
-      if (data.foto_frontal?.[0])
-        formData.append("foto_frontal", data.foto_frontal[0]);
+      if (frontalFile) formData.append("foto_frontal", frontalFile);
 
-      if (data.foto_trasera?.[0])
-        formData.append("foto_trasera", data.foto_trasera[0]);
-
-      if (item?.id) {
-        await MatriculasAPI.update(item.id, formData);
+      if (isEdit) {
+        await EspecialidadesAPI.update(data.id, formData);
       } else {
-        await MatriculasAPI.create(formData);
+        await EspecialidadesAPI.create(formData);
       }
 
       onClose();
     } catch (err) {
       console.error("Error al guardar matrícula", err);
+      setError("Ocurrió un error al guardar.");
     } finally {
       setSubmitLoading(false);
     }
@@ -116,7 +111,6 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
     setCroppedImage(URL.createObjectURL(file));
     setFrontalFile(file);
   };
-
 
   const customStyles = {
     control: (base, state) => ({
@@ -128,18 +122,18 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
     }),
   };
 
-  const isEdit = Boolean(item?.id);
+  if (!trabajador) return null;
 
   return (
     <LoaderError loading={loading} error={error}>
-      <div className="bg-white">
+      <div className="bg-white rounded-xl overflow-hidden">
         {/* Header */}
-        <div className="bg-indigo-600 px-6 py-4 text-white rounded-t-xl">
+        <div className="bg-indigo-600 px-6 py-4 text-white">
           <h2 className="text-2xl font-bold">
-            {isEdit ? "Editar Matrícula" : "Nueva Matrícula"}
+            {isEdit ? "Actualizar matrícula" : "Nueva matrícula"}
           </h2>
           <p className="text-indigo-100 text-sm">
-            Trabajador: {trabajador?.nombre}
+            Trabajador: {trabajador.nombre}
           </p>
         </div>
 
@@ -151,7 +145,7 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
               Tipo de Matrícula *
             </Label>
             <Controller
-              name="tipo_matricula"
+              name="tipo_especialidad"
               control={control}
               rules={{ required: "Seleccione un tipo" }}
               render={({ field }) => (
@@ -163,8 +157,8 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
                 />
               )}
             />
-            {errors.tipo_matricula && (
-              <p className="text-red-500 text-sm">{errors.tipo_matricula.message}</p>
+            {errors.tipo_especialidad && (
+              <p className="text-red-500 text-sm">{errors.tipo_especialidad.message}</p>
             )}
           </div>
 
@@ -176,9 +170,7 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
             </Label>
             <Input
               type="date"
-              {...register("fecha_vigencia", {
-                required: "La fecha es obligatoria",
-              })}
+              {...register("fecha_vigencia", { required: "La fecha es obligatoria" })}
             />
           </div>
 
@@ -189,24 +181,24 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
                 <Image className="w-4 h-4" />
                 Foto Frontal
               </Label>
-<input
-          type="file"
-          accept="image/*"
-          onChange={(e) => {
-            setFrontalFile(e.target.files[0]);
-            setCroppedImage(null);
-          }}
-          className="border p-2 rounded"
-        />
-         {frontalFile && (
-        <ImageCropPolygon imageFile={frontalFile} onCrop={handleCrop} />
-      )}
-{croppedImage && (
-        <div className="mt-4 border p-4 rounded bg-gray-50">
-          <h2 className="font-bold mb-2">Imagen Recortada:</h2>
-          <img src={croppedImage} alt="Recortada" className="max-w-full" />
-        </div>
-      )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  setFrontalFile(e.target.files[0]);
+                  setCroppedImage(null);
+                }}
+                className="border p-2 rounded"
+              />
+              {frontalFile && (
+                <ImageCropPolygon imageFile={frontalFile} onCrop={handleCrop} />
+              )}
+              {croppedImage && (
+                <div className="mt-4 border p-4 rounded bg-gray-50">
+                  <h2 className="font-bold mb-2">Imagen Recortada:</h2>
+                  <img src={croppedImage} alt="Recortada" className="max-w-full" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -230,9 +222,7 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
               {...register("predeterminada")}
               className="h-5 w-5 accent-indigo-600"
             />
-            <span className="text-sm">
-              Establecer como matrícula predeterminada
-            </span>
+            <span className="text-sm">Establecer como matrícula predeterminada</span>
           </div>
 
           {/* Botones */}
@@ -244,7 +234,6 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
             >
               Cancelar
             </button>
-
             <button
               type="submit"
               disabled={submitLoading}
@@ -259,6 +248,4 @@ const FormMatriculas = ({ isOpen, onClose, item, trabajador }) => {
   );
 };
 
-export default FormMatriculas;
-
- 
+export default FormEspecialidad;

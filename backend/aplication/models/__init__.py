@@ -8,3 +8,4 @@ from .Especialidad import Especialidad
 from .EspecialidadImagen import EspecialidadImagen
 from .CategoriaEspecialidad import CategoriaEspecialidad
 from .ProcessedPDF import ProcessedPDF
+from .CertificadoImagen import CertificadoImagen

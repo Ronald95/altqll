@@ -1,34 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import SelectReact from "react-select";
-import {
-  CreditCard,
-  Calendar,
-} from "lucide-react";
+import { CreditCard, Calendar, Image } from "lucide-react";
 import LoaderError from "../../../loading/LoaderError";
 import CursosAPI from "../../../../api/cursos";
 import Input from "../../../form/input/InputField";
 import Label from "../../../form/Label";
+import ImageCropPolygon from "../../images/ImageCropPolygon";
 
-const FormCursos = ({ isOpen, onClose, item, trabajador }) => {
-  const {
-    register,
-    handleSubmit,
-    control,
-    reset,
-    formState: { errors },
-  } = useForm({
+const FormCursos = ({ isOpen, onClose, data, trabajador }) => {
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm({
     defaultValues: {
-      tipo_matricula: null,
+      tipo_curso: null,
       fecha_vigencia: "",
       foto_frontal: null,
-      foto_trasera: null,
       observacion: "",
       predeterminada: false,
     },
     mode: "onChange",
   });
- if (!item) return null;
+
   const [tipos, setTipos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -37,70 +28,64 @@ const FormCursos = ({ isOpen, onClose, item, trabajador }) => {
   const [frontalFile, setFrontalFile] = useState(null);
   const [croppedImage, setCroppedImage] = useState(null);
 
+  const isEdit = Boolean(data?.id);
 
-
-    // Cargar tipos de matrícula
-    useEffect(() => {
-      if (!isOpen) return;
-  
-      const fetchTipos = async () => {
-        setLoading(true);
-        try {
-          const data = await CursosAPI.getCategoriasCursosForSelect();
-          setTipos(data);
-        } catch (err) {
-          console.error(err);
-          setError("No se pudieron cargar los tipos de matrícula.");
-        } finally {
-          setLoading(false);
-        }
-      };
-  
-      fetchTipos();
-    }, [isOpen]);
-
-  // Editar matrícula
+  // Cargar tipos de cursos
   useEffect(() => {
-    if (item) {
+    if (!isOpen) return;
+    const fetchTipos = async () => {
+      setLoading(true);
+      try {
+        const response = await CursosAPI.getCategoriasCursosForSelect();
+        setTipos(response.data);
+      } catch (err) {
+        console.error(err);
+        setError("No se pudieron cargar los tipos de curso.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTipos();
+  }, [isOpen]);
+
+  // Llenar formulario si estamos editando
+  useEffect(() => {
+    if (data) {
       reset({
-        tipo_matricula: item.tipo_data
-          ? { value: item.tipo_data.id, label: item.tipo_data.nombre }
-          : null,
-        fecha_vigencia: item.fecha_vigencia || "",
-        observacion: item.observacion || "",
-        predeterminada: item.predeterminada || false,
+        tipo_curso: data.codigo ? { value: data.codigo, label: data.nombre } : null,
+        fecha_vigencia: data.fecha_vigencia || "",
+        observacion: data.observacion || "",
+        predeterminada: data.predeterminada || false,
       });
+      if (data.foto_frontal) setCroppedImage(data.foto_frontal);
     } else {
       reset();
+      setFrontalFile(null);
+      setCroppedImage(null);
     }
-  }, [item, reset]);
+  }, [data, reset]);
 
   const onSubmit = async (data) => {
+    if (!trabajador?.id) return;
     try {
       setSubmitLoading(true);
-
       const formData = new FormData();
       formData.append("trabajador", trabajador.id);
-      formData.append("tipo_matricula", data.tipo_matricula?.value);
+      formData.append("tipo_curso", data.tipo_curso?.value);
       formData.append("fecha_vigencia", data.fecha_vigencia);
       formData.append("observacion", data.observacion || "");
       formData.append("predeterminada", data.predeterminada);
+      if (frontalFile) formData.append("foto_frontal", frontalFile);
 
-      if (data.foto_frontal?.[0])
-        formData.append("foto_frontal", data.foto_frontal[0]);
-
-      if (data.foto_trasera?.[0])
-        formData.append("foto_trasera", data.foto_trasera[0]);
-
-      if (item?.id) {
-        await CursosAPI.update(item.id, formData);
+      if (isEdit) {
+        await CursosAPI.update(data.id, formData);
       } else {
         await CursosAPI.create(formData);
       }
-
       onClose();
     } catch (err) {
-      console.error("Error al guardar matrícula", err);
+      console.error("Error al guardar curso", err);
+      setError("Ocurrió un error al guardar.");
     } finally {
       setSubmitLoading(false);
     }
@@ -110,7 +95,6 @@ const FormCursos = ({ isOpen, onClose, item, trabajador }) => {
     setCroppedImage(URL.createObjectURL(file));
     setFrontalFile(file);
   };
-
 
   const customStyles = {
     control: (base, state) => ({
@@ -122,47 +106,33 @@ const FormCursos = ({ isOpen, onClose, item, trabajador }) => {
     }),
   };
 
-  const isEdit = Boolean(item?.id);
+  if (!trabajador) return null;
 
   return (
     <LoaderError loading={loading} error={error}>
-      <div className="bg-white">
-        {/* Header */}
-        <div className="bg-indigo-600 px-6 py-4 text-white rounded-t-xl">
-          <h2 className="text-2xl font-bold">
-            {isEdit ? "Actualizar Curso" : "Nuevo Curso"}
-          </h2>
-          <p className="text-indigo-100 text-sm">
-            Trabajador: {trabajador?.nombre}
-          </p>
+      <div className="bg-white rounded-xl overflow-hidden">
+        <div className="bg-indigo-600 px-6 py-4 text-white">
+          <h2 className="text-2xl font-bold">{isEdit ? "Actualizar Curso" : "Nuevo Curso"}</h2>
+          <p className="text-indigo-100 text-sm">Trabajador: {trabajador.nombre}</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
-          {/* Tipo matrícula */}
           <div>
             <Label className="flex items-center gap-2">
               <CreditCard className="w-4 h-4" />
               Tipo de Curso *
             </Label>
             <Controller
-              name="tipo_matricula"
+              name="tipo_curso"
               control={control}
               rules={{ required: "Seleccione un tipo" }}
               render={({ field }) => (
-                <SelectReact
-                  {...field}
-                  options={tipos}
-                  placeholder="Seleccione..."
-                  styles={customStyles}
-                />
+                <SelectReact {...field} options={tipos} placeholder="Seleccione..." styles={customStyles} />
               )}
             />
-            {errors.tipo_matricula && (
-              <p className="text-red-500 text-sm">{errors.tipo_matricula.message}</p>
-            )}
+            {errors.tipo_curso && <p className="text-red-500 text-sm">{errors.tipo_curso.message}</p>}
           </div>
 
-          {/* Fecha vigencia */}
           <div>
             <Label className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
@@ -170,26 +140,35 @@ const FormCursos = ({ isOpen, onClose, item, trabajador }) => {
             </Label>
             <Input
               type="date"
-              {...register("fecha_vigencia", {
-                required: "La fecha es obligatoria",
-              })}
+              {...register("fecha_vigencia", { required: "La fecha es obligatoria" })}
             />
           </div>
-          {/* Botones */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border rounded-xl"
-            >
-              Cancelar
-            </button>
 
-            <button
-              type="submit"
-              disabled={submitLoading}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-xl"
-            >
+          <div className="grid grid-cols-6 md:grid-cols-1 gap-4">
+            <div>
+              <Label className="flex items-center gap-2">
+                <Image className="w-4 h-4" />
+                Foto Frontal
+              </Label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => { setFrontalFile(e.target.files[0]); setCroppedImage(null); }}
+                className="border p-2 rounded"
+              />
+              {frontalFile && <ImageCropPolygon imageFile={frontalFile} onCrop={handleCrop} />}
+              {croppedImage && (
+                <div className="mt-4 border p-4 rounded bg-gray-50">
+                  <h2 className="font-bold mb-2">Imagen Recortada:</h2>
+                  <img src={croppedImage} alt="Recortada" className="max-w-full" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <button type="button" onClick={onClose} className="px-4 py-2 border rounded-xl">Cancelar</button>
+            <button type="submit" disabled={submitLoading} className="px-6 py-2 bg-indigo-600 text-white rounded-xl">
               {submitLoading ? "Guardando..." : "Guardar"}
             </button>
           </div>
@@ -200,5 +179,3 @@ const FormCursos = ({ isOpen, onClose, item, trabajador }) => {
 };
 
 export default FormCursos;
-
- 

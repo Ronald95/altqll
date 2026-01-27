@@ -46,7 +46,11 @@ const TableTrabajadores = ({ data = [], onEdit, onDelete, selectedItem, loading 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-b-4 border-gray-300"></div>
+        <div className=" animate-spin rounded-full h-12 w-12
+  border-t-4 border-t-blue-500
+  border-b-4 border-b-gray-300
+  border-l-4 border-l-gray-300
+  border-r-4 border-r-gray-300"></div>
       </div>
     );
   }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 
 // --- Tablas (igual que antes) ---
-const TablaCertificados = ({ certificados = [] }) => {
+const TablaCertificados = ({ certificados = [], onEdit, onDelete }) => {
   if (!certificados.length) {
     return <p className="text-gray-500">No hay certificados disponibles.</p>;
   }
@@ -24,14 +24,29 @@ const TablaCertificados = ({ certificados = [] }) => {
             <th className="px-3 py-2 border-b">Certificado</th>
             <th className="px-3 py-2 border-b">Código</th>
             <th className="px-3 py-2 border-b">Vencimiento</th>
+            <th className="px-3 py-2 border-b">Acciones</th>
           </tr>
         </thead>
         <tbody>
           {certificados.map((c) => (
             <tr key={c.id} className={`${getRowColor(c.fecha_vigencia)} hover:opacity-90`}>
-              <td className="px-3 py-2 border-b">{c.nombre}</td>
+              <td className="px-3 py-2 border-b">{c.categoria.nombre}</td>
               <td className="px-3 py-2 border-b">{c.codigo}</td>
               <td className="px-3 py-2 border-b">{c.fecha_vigencia}</td>
+              <td>
+                <button
+                  onClick={() => onEdit?.(c)}
+                  className="text-blue-600 hover:underline"
+                >
+                  Editar
+                </button>
+                 <button
+                  onClick={() => onDelete('certificados', c)}
+                  className="text-red-600 hover:underline"
+                >
+                  Eliminar
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -40,7 +55,7 @@ const TablaCertificados = ({ certificados = [] }) => {
   );
 };
 
-const TablaCursos = ({ cursos = [] }) => {
+const TablaCursos = ({ cursos = [], onEdit, onDelete }) => {
   if (!cursos.length) return <p className="text-gray-500">No hay cursos disponibles.</p>;
 
   return (
@@ -51,14 +66,29 @@ const TablaCursos = ({ cursos = [] }) => {
             <th className="px-3 py-2 border-b">Curso</th>
             <th className="px-3 py-2 border-b">Fecha</th>
             <th className="px-3 py-2 border-b">Estado</th>
+            <th className="px-3 py-2 border-b">Acciones</th>
           </tr>
         </thead>
         <tbody>
           {cursos.map((c) => (
             <tr key={c.id} className="hover:bg-gray-50">
-              <td className="px-3 py-2 border-b">{c.nombre}</td>
+              <td className="px-3 py-2 border-b">{c.categoria.nombre}</td>
               <td className="px-3 py-2 border-b">{c.fecha_vigencia}</td>
               <td className="px-3 py-2 border-b">{c.estado || "Activo"}</td>
+              <td>
+                <button
+                  onClick={() => onEdit?.(c)}
+                  className="text-blue-600 hover:underline"
+                >
+                  Editar
+                </button>
+                 <button
+                  onClick={() => onDelete('cursos', c)}
+                  className="text-red-600 hover:underline"
+                >
+                  Eliminar
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -67,7 +97,7 @@ const TablaCursos = ({ cursos = [] }) => {
   );
 };
 
-const TablaEspecialidades = ({ especialidades = [] }) => {
+const TablaEspecialidades = ({ especialidades = [], onEdit, onDelete }) => {
   if (!especialidades.length) return <p className="text-gray-500">No hay especialidades disponibles.</p>;
 
   return (
@@ -78,14 +108,29 @@ const TablaEspecialidades = ({ especialidades = [] }) => {
             <th className="px-3 py-2 border-b">Especialidad</th>
             <th className="px-3 py-2 border-b">Fecha</th>
             <th className="px-3 py-2 border-b">Observación</th>
+            <th className="px-3 py-2 border-b">Acciones</th>
           </tr>
         </thead>
         <tbody>
           {especialidades.map((e) => (
             <tr key={e.id} className="hover:bg-gray-50">
-              <td className="px-3 py-2 border-b">{e.nombre}</td>
+              <td className="px-3 py-2 border-b">{e.categoria.nombre}</td>
               <td className="px-3 py-2 border-b">{e.fecha_vigencia}</td>
               <td className="px-3 py-2 border-b">{e.observacion || "-"}</td>
+              <td>
+                <button
+                  onClick={() => onEdit?.(e)}
+                  className="text-blue-600 hover:underline"
+                >
+                  Editar
+                </button>
+                <button
+                  onClick={() => onDelete('especialidades', e)}
+                  className="text-red-600 hover:underline"
+                >
+                  Eliminar
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -95,7 +140,16 @@ const TablaEspecialidades = ({ especialidades = [] }) => {
 };
 
 // --- Dashboard con spinner ---
-export default function DashboardTrabajador({ certificados, cursos, especialidades }) {
+// --- Dashboard ---
+export default function DashboardTrabajador({
+  certificados = [],
+  cursos = [],
+  especialidades = [],
+  onEditCertificado,
+  onEditCurso,
+  onEditEspecialidad,
+  onDelete
+}) {
   const [tab, setTab] = useState("certificados");
   const [loading, setLoading] = useState(true);
 
@@ -125,6 +179,14 @@ if (loading) {
     <div className="p-4">
       {/* Tabs */}
       <div className="flex border-b mb-4">
+       <button
+          onClick={() => setTab("especialidades")}
+          className={`px-4 py-2 -mb-px font-semibold border-b-2 ${
+            tab === "especialidades" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-600"
+          }`}
+        >
+          Especialidades
+        </button>
         <button
           onClick={() => setTab("certificados")}
           className={`px-4 py-2 -mb-px font-semibold border-b-2 ${
@@ -141,21 +203,36 @@ if (loading) {
         >
           Cursos
         </button>
-        <button
-          onClick={() => setTab("especialidades")}
-          className={`px-4 py-2 -mb-px font-semibold border-b-2 ${
-            tab === "especialidades" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-600"
-          }`}
-        >
-          Especialidades
-        </button>
+       
       </div>
 
       {/* Contenido de tab */}
       <div>
-        {tab === "certificados" && <TablaCertificados certificados={certificados} />}
-        {tab === "cursos" && <TablaCursos cursos={cursos} />}
-        {tab === "especialidades" && <TablaEspecialidades especialidades={especialidades} />}
+       <div>
+        {tab === "especialidades" && (
+    <TablaEspecialidades 
+      especialidades={especialidades} 
+      onEdit={onEditEspecialidad} 
+      onDelete={onDelete}
+    />
+  )}
+  {tab === "certificados" && (
+    <TablaCertificados 
+      certificados={certificados} 
+      onEdit={onEditCertificado} 
+      onDelete={onDelete}
+    />
+  )}
+  {tab === "cursos" && (
+    <TablaCursos 
+      cursos={cursos} 
+      onEdit={onEditCurso}  
+      onDelete={onDelete}
+      />
+  )}
+ 
+</div>
+
       </div>
     </div>
   );
