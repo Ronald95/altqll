@@ -13,56 +13,18 @@ import Index from "./pages/Index";
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
 import NotFound from "./pages/OtherPage/NotFound";
-
-// ============================================
-// PÁGINAS PROTEGIDAS - Dashboard
-// ============================================
-import Home from "./pages/Dashboard/Home";
-
-// ============================================
-// PÁGINAS PROTEGIDAS - Otros
-// ============================================
-import UserProfiles from "./pages/UserProfiles";
-import Calendar from "./pages/Calendar";
 import Blank from "./pages/Blank";
-
-// ============================================
-// PÁGINAS PROTEGIDAS - Formularios
-// ============================================
-import FormElements from "./pages/Forms/FormElements";
-
-// ============================================
-// PÁGINAS PROTEGIDAS - Tablas
-// ============================================
-import BasicTables from "./pages/Tables/BasicTables";
-
-// ============================================
-// PÁGINAS PROTEGIDAS - UI Elements
-// ============================================
-import Alerts from "./pages/UiElements/Alerts";
-import Avatars from "./pages/UiElements/Avatars";
-import Badges from "./pages/UiElements/Badges";
-import Buttons from "./pages/UiElements/Buttons";
-import Images from "./pages/UiElements/Images";
-import Videos from "./pages/UiElements/Videos";
-
-// ============================================
-// PÁGINAS PROTEGIDAS - Charts
-// ============================================
-import LineChart from "./pages/Charts/LineChart";
-import BarChart from "./pages/Charts/BarChart";
-
-// ============================================
-// PÁGINAS PROTEGIDAS - PDF Scanner
-// ============================================
 import PdfToScan from "./pages/Pdf_to_scanner";
 import ScanDocWeb from "./pages/Pdf_to_scanner/ScanDocWeb";
-
-// ============================================
-// PÁGINAS PROTEGIDAS - Trabajadores
-// ============================================
+import Home from "./pages/Dashboard/Home";
 import Trabajador_Index from "./pages/Trabajadores/Trabajador_Index";
-
+import Nave_Index from "./pages/Naves/index";
+import UserProfiles from "./pages/UserProfiles";
+import DetalleNave from "./pages/Naves/detalleNave";
+import NaveLayout from "./layout/NaveLayout";
+import PirotecniaIndex from "./pages/Naves/Pirotecnia/index";
+import CertificadosIndex from "./pages/Naves/Certificados/index";
+import EstudiosIndex from "./pages/Naves/Estudios/index";
 // ============================================
 // SPINNER GLOBAL
 // ============================================
@@ -114,26 +76,7 @@ export default function App() {
 
               {/* Otros */}
               <Route path="/profile" element={<UserProfiles />} />
-              <Route path="/calendar" element={<Calendar />} />
               <Route path="/blank" element={<Blank />} />
-
-              {/* Formularios */}
-              <Route path="/form-elements" element={<FormElements />} />
-
-              {/* Tablas */}
-              <Route path="/basic-tables" element={<BasicTables />} />
-
-              {/* UI Elements */}
-              <Route path="/alerts" element={<Alerts />} />
-              <Route path="/avatars" element={<Avatars />} />
-              <Route path="/badge" element={<Badges />} />
-              <Route path="/buttons" element={<Buttons />} />
-              <Route path="/images" element={<Images />} />
-              <Route path="/videos" element={<Videos />} />
-
-              {/* Charts */}
-              <Route path="/line-chart" element={<LineChart />} />
-              <Route path="/bar-chart" element={<BarChart />} />
 
               {/* PDF Scanner */}
               <Route path="/pdf-to-scan" element={<PdfToScan />} />
@@ -141,6 +84,15 @@ export default function App() {
 
               {/* Trabajadores */}
               <Route path="/trabajadores" element={<Trabajador_Index />} />
+
+              {/* Naves */}
+              <Route path="/naves" element={<Nave_Index />} />
+              <Route path="naves/:id/*" element={<NaveLayout />}>
+                <Route index element={<DetalleNave />} />
+                <Route path="pirotecnia" element={<PirotecniaIndex />} />
+                <Route path="certificados" element={<CertificadosIndex />} />
+                <Route path="estudios" element={<EstudiosIndex />} />
+              </Route>
 
             </Route>
           </Route>

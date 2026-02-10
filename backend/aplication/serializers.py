@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from aplication.models import Trabajador, CategoriaCertificado, CategoriaEspecialidad, Especialidad, EspecialidadImagen, CategoriaCurso, Certificado, Curso, ProcessedPDF, CertificadoImagen
+from aplication.models import Trabajador, CategoriaCertificado, CategoriaEspecialidad, Especialidad, EspecialidadImagen, CategoriaCurso, Certificado, Curso, ProcessedPDF, CertificadoImagen, Naves, CategoriaNave, CategoriaCertificadoNave, RequisitoCertificadoNave, CertificadoNave, CategoriaTitulo, CategoriaPermiso, Titulo, Permiso
 from django.conf import settings
 
 
@@ -252,6 +252,39 @@ class CursoSerializer(serializers.ModelSerializer):
         model = Curso
         fields = ['id', 'trabajador', 'categoria', 'fecha_vigencia', 'user']
 
+class CategoriaTituloSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CategoriaTitulo
+        fields = ['id', 'nombre']
+
+class TituloSerializer(serializers.ModelSerializer):
+    categoria = CategoriaTituloSerializer(read_only=True)
+    trabajador = serializers.PrimaryKeyRelatedField(
+        queryset=Trabajador.objects.all(),  # Para create/update
+        write_only=True                     # No se muestra en GET
+    )
+    class Meta:
+        model = Curso
+        fields = ['id', 'trabajador', 'categoria', 'fecha_vigencia', 'user']
+
+
+class CategoriaPermisoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CategoriaPermiso
+        fields = ['id', 'nombre']
+
+
+class PermisoSerializer(serializers.ModelSerializer):
+    categoria = CategoriaPermisoSerializer(read_only=True)
+    trabajador = serializers.PrimaryKeyRelatedField(
+        queryset=Trabajador.objects.all(),  # Para create/update
+        write_only=True                     # No se muestra en GET
+    )
+    class Meta:
+        model = Permiso
+        fields = ['id', 'trabajador', 'categoria', 'fecha_vigencia', 'user']
+
+
 
 
 class TrabajadorListSerializer(serializers.ModelSerializer):
@@ -272,8 +305,133 @@ class TrabajadorDetailSerializer(serializers.ModelSerializer):
     certificados = CertificadoSerializer(many=True, read_only=True)
     cursos = CursoSerializer(many=True, read_only=True)
     especialidades = EspecialidadSerializer(many=True, read_only=True)
+    titulos = TituloSerializer(many=True, read_only=True)
+    permisos = PermisoSerializer(many=True, read_only=True)
+        
+    
+    def get_titulo(self, obj):
+        return obj.titulo_set.all().values_list('titulo', flat=True)
 
     class Meta:
         model = Trabajador
         fields = '__all__'
+
+class NaveDashboardSerializer(serializers.ModelSerializer):
+    categoria = serializers.CharField(source='categoria.nombre')
+    porcentaje_certificados = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Naves
+        fields = [
+            'id',
+            'nombre',
+            'categoria',
+            'porcentaje_certificados'
+        ]
+
+    def get_porcentaje_certificados(self, obj):
+        return porcentaje_certificados_naves(obj)
+
+class CategoriaNaveSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CategoriaNave
+        fields = [
+            'id',
+            'nombre',
+            'created_at',
+            'updated_at'
+        ]
+
+class CategoriaCertificadoNaveSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CategoriaCertificadoNave
+        fields = [
+            'id',
+            'nombre',
+            'created_at',
+            'updated_at'
+        ]
+
+class NaveSerializer(serializers.ModelSerializer):
+    categoria_nombre = serializers.CharField(
+        source='categoria.nombre',
+        read_only=True
+    )
+
+    class Meta:
+        model = Naves
+        fields = [
+            'id',
+            'nombre',
+            'sllamada',
+            'matricula',
+            'eslora',
+            'manga',
+            'puntal',
+            'trg',
+            'tminima',
+            'tmaxima',
+            'pasajeros',
+            'actividad',
+            'imagen',
+            'categoria',
+            'categoria_nombre',
+            'created_at',
+            'updated_at'
+        ]
+
+
+class RequisitoCertificadoNaveSerializer(serializers.ModelSerializer):
+    categoria_certificado_nombre = serializers.CharField(
+        source='categoria_certificado.nombre',
+        read_only=True
+    )
+    categoria_nave_nombre = serializers.CharField(
+        source='categoria_nave.nombre',
+        read_only=True
+    )
+
+    class Meta:
+        model = RequisitoCertificadoNave
+        fields = [
+            'id',
+            'categoria_certificado',
+            'categoria_certificado_nombre',
+            'categoria_nave',
+            'categoria_nave_nombre',
+            'obligatorio',
+            'aplica_a_todas',
+            'naves',
+            'created_at',
+            'updated_at'
+        ]
+
+
+class CertificadoNaveSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CertificadoNave
+        fields = [
+            'id',
+            'certificado',
+            'nave',
+            'created_at',
+            'updated_at'
+        ]
+
+
+class NavesAvanceSerializer(serializers.ModelSerializer):
+    porcentaje_completado = serializers.SerializerMethodField()
+    certificados = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Naves
+        fields = ['id', 'nombre', 'porcentaje_completado', 'certificados']
+
+    def get_porcentaje_completado(self, obj):
+        porcentajes = self.context.get('porcentajes', {})
+        return porcentajes.get(obj.id, 0)
+    
+    def get_certificados(self, obj):
+        # Lista con nombre del certificado y estado OK/PENDIENTE
+        return RequisitoCertificadoNave.certificados_por_nave(obj)
 

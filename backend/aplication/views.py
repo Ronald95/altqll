@@ -1,16 +1,13 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from aplication.models import Trabajador, Especialidad, EspecialidadImagen, CategoriaEspecialidad, CategoriaCertificado, CategoriaCurso, Certificado, Curso, ProcessedPDF, CertificadoImagen
-from aplication.serializers import TrabajadorListSerializer, TrabajadorDetailSerializer, PDFUploadSerializer, EspecialidadSerializer, EspecialidadImagenSerializer, CategoriaEspecialidadSerializer, CategoriaCertificadoSerializer, CategoriaCursoSerializer, CertificadoSerializer, CursoSerializer, ProcessedPDFSerializer, CertificadoImagenSerializer, CertificadoImagen
+from aplication.models import Trabajador, Especialidad, EspecialidadImagen, CategoriaEspecialidad, CategoriaCertificado, CategoriaCurso, Certificado, Curso, ProcessedPDF, CertificadoImagen, Naves, CategoriaNave, CategoriaCertificadoNave, RequisitoCertificadoNave, CertificadoNave
+from aplication.serializers import TrabajadorListSerializer, TrabajadorDetailSerializer, PDFUploadSerializer, EspecialidadSerializer, EspecialidadImagenSerializer, CategoriaEspecialidadSerializer, CategoriaCertificadoSerializer, CategoriaCursoSerializer, CertificadoSerializer, CursoSerializer, ProcessedPDFSerializer, CertificadoImagenSerializer, CertificadoImagen, NaveDashboardSerializer, NaveDashboardSerializer, CategoriaNaveSerializer, CategoriaCertificadoNaveSerializer, RequisitoCertificadoNaveSerializer, NaveSerializer, CertificadoNaveSerializer, NavesAvanceSerializer
 from rest_framework.views import APIView
 from django.http import JsonResponse
 from rest_framework import status
 from django.conf import settings
 import os
-import uuid
 from pdf2image import convert_from_path
-from PIL import Image, ImageFilter
-from fpdf import FPDF
 from rest_framework.parsers import MultiPartParser, FormParser
 import requests
 import json
@@ -431,3 +428,84 @@ def certificados_persona(request):
 
     except requests.exceptions.RequestException as e:
         return JsonResponse({"error": str(e)}, status=500)
+
+
+class DashboardNavesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        naves = Naves.objects.select_related('categoria')
+        porcentajes = RequisitoCertificadoNave.porcentaje_certificados_naves(naves)
+
+        serializer = NavesAvanceSerializer(
+            naves,
+            many=True,
+            context={
+                'request': request,
+                'porcentajes': porcentajes
+            }
+        )
+
+        return Response(serializer.data)
+
+
+
+class CategoriaNaveViewSet(viewsets.ModelViewSet):
+    queryset = CategoriaNave.objects.all().order_by('nombre')
+    serializer_class = CategoriaNaveSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class CategoriaCertificadoNaveViewSet(viewsets.ModelViewSet):
+    queryset = CategoriaCertificadoNave.objects.all().order_by('nombre')
+    serializer_class = CategoriaCertificadoNaveSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class NaveViewSet(viewsets.ModelViewSet):
+    queryset = Naves.objects.select_related('categoria')
+    serializer_class = NaveSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class CertificadoNaveViewSet(viewsets.ModelViewSet):
+    queryset = CertificadoNave.objects.select_related('certificado', 'nave')
+    serializer_class = CertificadoNaveSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class RequisitoCertificadoNaveViewSet(viewsets.ModelViewSet):
+    queryset = RequisitoCertificadoNave.objects.select_related(
+        'categoria_certificado',
+        'categoria_nave'
+    ).prefetch_related('naves')
+
+    serializer_class = RequisitoCertificadoNaveSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class NavesAvanceViewSet(viewsets.ViewSet):
+    """
+    API para obtener todas las naves con su porcentaje de certificados completados.
+    """
+
+    def list(self, request):
+        naves = list(Naves.objects.all())
+        # Calculamos los porcentajes para todas las naves en 2 queries
+        porcentajes = RequisitoCertificadoNave.porcentaje_certificados_naves_optimizado(naves)
+
+        serializer = NavesAvanceSerializer(naves, many=True, context={'porcentajes': porcentajes})
+        return Response(serializer.data)
+

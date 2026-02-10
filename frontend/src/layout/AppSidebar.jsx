@@ -15,6 +15,13 @@ const navItems = [
     name: "Dashboard",
     path: "/home",
   },
+  {
+    icon: <PieChartIcon />,
+    name: "Naves",
+    subItems: [
+      { name: "Listado", path: "/naves", pro: false },
+    ],
+  },
 ];
 
 const othersItems = [

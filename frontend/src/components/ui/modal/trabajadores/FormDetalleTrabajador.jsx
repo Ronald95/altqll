@@ -16,6 +16,8 @@ import DashboardTrabajador from "../../table/trabajadores/DashboardTrabajador";
 import CertificadosAPI from "../../../../api/certificados";
 import CursosAPI from "../../../../api/cursos";
 import EspecialidadesAPI from "../../../../api/especialidades";
+import TitulosAPI from "../../../../api/titulos";
+import PermisosAPI from "../../../../api/permisos";
 
 // Toast para notificaciones
 const Toast = ({ message, type = 'success', onClose }) => {
@@ -141,7 +143,9 @@ export default function FormDetalleTrabajador({ isOpen, item, onClose }) {
     trabajador: null,
     certificados: [],
     cursos: [],
-    especialidades: []
+    especialidades: [],
+    titulos: [],
+    permisos: []
   });
 
   const {
@@ -160,6 +164,18 @@ export default function FormDetalleTrabajador({ isOpen, item, onClose }) {
     isOpen: isOpenCertificados,
     openModal: openModalCertificados,
     closeModal: closeModalCertificados,
+  } = useModal();
+  
+  const {
+    isOpen: isOpenTitulos,
+    openModal: openModalTitulos,
+    closeModal: closeModalTitulos,
+  } = useModal();
+  
+  const {
+    isOpen: isOpenPermisos,
+    openModal: openModalPermisos,
+    closeModal: closeModalPermisos,
   } = useModal();
 
   const [editingRecord, setEditingRecord] = useState(null);
@@ -203,7 +219,9 @@ export default function FormDetalleTrabajador({ isOpen, item, onClose }) {
         trabajador: response,
         certificados: response.certificados || [],
         cursos: response.cursos || [],
-        especialidades: response.especialidades || []
+        especialidades: response.especialidades || [],
+        titulos: response.titulos || [],
+        permisos: response.permisos || []
       });
       
     } catch (err) {
@@ -263,6 +281,20 @@ export default function FormDetalleTrabajador({ isOpen, item, onClose }) {
             especialidades: response.especialidades || []
           }));
           break;
+        case 'titulos':
+          response = await TrabajadoresAPI.getTrabajadorId(item.id);
+          setData(prev => ({
+            ...prev,
+            titulos: response.titulos || []
+          }));
+          break;
+        case 'permisos':
+          response = await TrabajadoresAPI.getTrabajadorId(item.id);
+          setData(prev => ({
+            ...prev,
+            permisos: response.permisos || []
+          }));
+          break;
       }
     } catch (error) {
       console.error(`Error recargando ${section}:`, error);
@@ -278,6 +310,8 @@ export default function FormDetalleTrabajador({ isOpen, item, onClose }) {
     if (type === "especialidad") openModalEspecialidad();
     if (type === "curso") openModalCursos();
     if (type === "certificado") openModalCertificados();
+    if (type === "titulo") openModalTitulos();
+    if (type === "permiso") openModalPermisos();
   };
 
   // Función para editar registro
@@ -287,7 +321,9 @@ export default function FormDetalleTrabajador({ isOpen, item, onClose }) {
     if (type === "especialidad") openModalEspecialidad();
     if (type === "curso") openModalCursos();
     if (type === "certificado") openModalCertificados();
-  };
+    if (type === "titulo") openModalTitulos();
+    if (type === "permiso") openModalPermisos();
+  };  
 
   // Función optimizada para cerrar modales
   const handleCloseModalWithOptimistic = useCallback((modalCloseFn, type) => {
@@ -316,7 +352,9 @@ export default function FormDetalleTrabajador({ isOpen, item, onClose }) {
     const sectionKey = {
       certificados: 'certificados',
       cursos: 'cursos',
-      especialidades: 'especialidades'
+      especialidades: 'especialidades',
+      titulos: 'titulos',
+      permisos: 'permisos'
     }[deleteType];
     
     if (!sectionKey) return;
@@ -348,6 +386,12 @@ export default function FormDetalleTrabajador({ isOpen, item, onClose }) {
           break;
         case 'especialidades':
           response = await EspecialidadesAPI.delete(recordToDelete.id);
+          break;
+        case 'titulos':
+          response = await TitulosAPI.delete(recordToDelete.id);
+          break;
+        case 'permisos':
+          response = await PermisosAPI.delete(recordToDelete.id);
           break;
       }
 
@@ -595,6 +639,26 @@ export default function FormDetalleTrabajador({ isOpen, item, onClose }) {
           </div>
           <span className="font-medium">+ Curso</span>
         </button>
+        <button 
+          onClick={() => handleCreate("permiso")} 
+          disabled={loading || deleting}
+          className="flex items-center gap-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-3 rounded-xl shadow-md transition-all duration-200 hover:shadow-lg transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <div className="p-2 bg-white/20 rounded-lg">
+            <HiOutlineBookOpen className="h-5 w-5" />
+          </div>
+          <span className="font-medium">+ Permisos</span>
+        </button>
+        <button 
+          onClick={() => handleCreate("titulos")} 
+          disabled={loading || deleting}
+          className="flex items-center gap-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-3 rounded-xl shadow-md transition-all duration-200 hover:shadow-lg transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <div className="p-2 bg-white/20 rounded-lg">
+            <HiOutlineBookOpen className="h-5 w-5" />
+          </div>
+          <span className="font-medium">+ Títulos</span>
+        </button>
       </div>
 
       {/* Dashboard */}
@@ -602,9 +666,13 @@ export default function FormDetalleTrabajador({ isOpen, item, onClose }) {
         certificados={data.certificados}
         cursos={data.cursos}
         especialidades={data.especialidades}
+        titulos={data.titulos}
+        permisos={data.permisos}
         onEditEspecialidad={(rec) => handleEdit("especialidad", rec)}
         onEditCurso={(rec) => handleEdit("curso", rec)}
         onEditCertificado={(rec) => handleEdit("certificado", rec)}
+        onEditPermiso={(rec) => handleEdit("permiso", rec)}
+        onEditTitulo={(rec) => handleEdit("titulo", rec)}
         onDelete={handleDelete}
         loading={loading || deleting}
         pendingOperations={pendingOperations}

@@ -1,238 +1,93 @@
 import React, { useState, useEffect } from "react";
-import dayjs from "dayjs";
+import TablaCertificados from "./TablaCertificados";
+import TablaCursos from "./TablaCursos";
+import TablaEspecialidades from "./TablaEspecialidades";
+import TablaTitulos from "./TablaTitulos";
+import TablaPermisos from "./TablaPermisos";
 
-// --- Tablas (igual que antes) ---
-const TablaCertificados = ({ certificados = [], onEdit, onDelete }) => {
-  if (!certificados.length) {
-    return <p className="text-gray-500">No hay certificados disponibles.</p>;
-  }
 
-  const getRowColor = (fechaVigencia) => {
-    const hoy = dayjs();
-    const vencimiento = dayjs(fechaVigencia);
-
-    if (vencimiento.isBefore(hoy)) return "bg-red-100 text-red-800";
-    if (vencimiento.diff(hoy, "day") <= 30) return "bg-yellow-100 text-yellow-800";
-    return "bg-green-100 text-green-800";
-  };
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm text-left text-gray-700">
-        <thead className="bg-gray-100 font-semibold">
-          <tr>
-            <th className="px-3 py-2 border-b">Certificado</th>
-            <th className="px-3 py-2 border-b">Código</th>
-            <th className="px-3 py-2 border-b">Vencimiento</th>
-            <th className="px-3 py-2 border-b">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {certificados.map((c) => (
-            <tr key={c.id} className={`${getRowColor(c.fecha_vigencia)} hover:opacity-90`}>
-              <td className="px-3 py-2 border-b">{c.categoria.nombre}</td>
-              <td className="px-3 py-2 border-b">{c.codigo}</td>
-              <td className="px-3 py-2 border-b">{c.fecha_vigencia}</td>
-              <td>
-                <button
-                  onClick={() => onEdit?.(c)}
-                  className="text-blue-600 hover:underline"
-                >
-                  Editar
-                </button>
-                 <button
-                  onClick={() => onDelete('certificados', c)}
-                  className="text-red-600 hover:underline"
-                >
-                  Eliminar
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
-const TablaCursos = ({ cursos = [], onEdit, onDelete }) => {
-  if (!cursos.length) return <p className="text-gray-500">No hay cursos disponibles.</p>;
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm text-left text-gray-700">
-        <thead className="bg-gray-100 font-semibold">
-          <tr>
-            <th className="px-3 py-2 border-b">Curso</th>
-            <th className="px-3 py-2 border-b">Fecha</th>
-            <th className="px-3 py-2 border-b">Estado</th>
-            <th className="px-3 py-2 border-b">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {cursos.map((c) => (
-            <tr key={c.id} className="hover:bg-gray-50">
-              <td className="px-3 py-2 border-b">{c.categoria.nombre}</td>
-              <td className="px-3 py-2 border-b">{c.fecha_vigencia}</td>
-              <td className="px-3 py-2 border-b">{c.estado || "Activo"}</td>
-              <td>
-                <button
-                  onClick={() => onEdit?.(c)}
-                  className="text-blue-600 hover:underline"
-                >
-                  Editar
-                </button>
-                 <button
-                  onClick={() => onDelete('cursos', c)}
-                  className="text-red-600 hover:underline"
-                >
-                  Eliminar
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
-const TablaEspecialidades = ({ especialidades = [], onEdit, onDelete }) => {
-  if (!especialidades.length) return <p className="text-gray-500">No hay especialidades disponibles.</p>;
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm text-left text-gray-700">
-        <thead className="bg-gray-100 font-semibold">
-          <tr>
-            <th className="px-3 py-2 border-b">Especialidad</th>
-            <th className="px-3 py-2 border-b">Fecha</th>
-            <th className="px-3 py-2 border-b">Observación</th>
-            <th className="px-3 py-2 border-b">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {especialidades.map((e) => (
-            <tr key={e.id} className="hover:bg-gray-50">
-              <td className="px-3 py-2 border-b">{e.categoria.nombre}</td>
-              <td className="px-3 py-2 border-b">{e.fecha_vigencia}</td>
-              <td className="px-3 py-2 border-b">{e.observacion || "-"}</td>
-              <td>
-                <button
-                  onClick={() => onEdit?.(e)}
-                  className="text-blue-600 hover:underline"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => onDelete('especialidades', e)}
-                  className="text-red-600 hover:underline"
-                >
-                  Eliminar
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
-// --- Dashboard con spinner ---
-// --- Dashboard ---
 export default function DashboardTrabajador({
   certificados = [],
   cursos = [],
   especialidades = [],
+  titulos = [],
+  permisos = [],
   onEditCertificado,
   onEditCurso,
   onEditEspecialidad,
+  onEditPermiso,
+  onEditTitulo,
   onDelete
 }) {
-  const [tab, setTab] = useState("certificados");
+  const [tab, setTab] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Simula fetch / espera a que los datos lleguen
-useEffect(() => {
-  if (
-    (certificados && certificados.length > 0) ||
-    (cursos && cursos.length > 0) ||
-    (especialidades && especialidades.length > 0)
-  ) {
+  // Lista dinámica de tabs
+  const tabs = [
+    { key: "especialidades", label: "Especialidades", data: especialidades, component: TablaEspecialidades, onEdit: onEditEspecialidad },
+    { key: "certificados", label: "Certificados", data: certificados, component: TablaCertificados, onEdit: onEditCertificado },
+    { key: "cursos", label: "Cursos", data: cursos, component: TablaCursos, onEdit: onEditCurso },
+    { key: "titulos", label: "Títulos", data: titulos, component: TablaTitulos, onEdit: onEditTitulo },
+    { key: "permisos", label: "Permisos", data: permisos, component: TablaPermisos, onEdit: onEditPermiso },
+  ];
+
+  // Filtra solo tabs que tengan datos
+  const availableTabs = tabs.filter(t => t.data && t.data.length > 0);
+
+  // Setea tab inicial al primer disponible
+  useEffect(() => {
+    if (availableTabs.length > 0) {
+      setTab(prev => prev || availableTabs[0].key);
+    }
     setLoading(false);
+  }, [certificados, cursos, especialidades, titulos, permisos]);
+
+  // Spinner mientras cargan datos
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-b-4 border-gray-300"></div>
+        <span className="ml-2">Cargando...</span>
+      </div>
+    );
   }
-}, [certificados, cursos, especialidades]);
 
-
-if (loading) {
-  return (
-    <div className="flex justify-center items-center h-64">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-b-4 border-gray-300"></div>
-      <span className="ml-2">Cargando...</span>
-    </div>
-  );
-}
-
+  // Mensaje si no hay ningún dato
+  if (availableTabs.length === 0) {
+    return <p className="text-gray-500 text-center">No hay información disponible.</p>;
+  }
 
   return (
     <div className="p-4">
       {/* Tabs */}
       <div className="flex border-b mb-4">
-       <button
-          onClick={() => setTab("especialidades")}
-          className={`px-4 py-2 -mb-px font-semibold border-b-2 ${
-            tab === "especialidades" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-600"
-          }`}
-        >
-          Especialidades
-        </button>
-        <button
-          onClick={() => setTab("certificados")}
-          className={`px-4 py-2 -mb-px font-semibold border-b-2 ${
-            tab === "certificados" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-600"
-          }`}
-        >
-          Certificados
-        </button>
-        <button
-          onClick={() => setTab("cursos")}
-          className={`px-4 py-2 -mb-px font-semibold border-b-2 ${
-            tab === "cursos" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-600"
-          }`}
-        >
-          Cursos
-        </button>
-       
+        {availableTabs.map(tabItem => (
+          <button
+            key={tabItem.key}
+            onClick={() => setTab(tabItem.key)}
+            className={`px-4 py-2 -mb-px font-semibold border-b-2 ${
+              tab === tabItem.key ? "border-blue-500 text-blue-600" : "border-transparent text-gray-600"
+            }`}
+          >
+            {tabItem.label}
+          </button>
+        ))}
       </div>
 
-      {/* Contenido de tab */}
+      {/* Contenido del tab */}
       <div>
-       <div>
-        {tab === "especialidades" && (
-    <TablaEspecialidades 
-      especialidades={especialidades} 
-      onEdit={onEditEspecialidad} 
-      onDelete={onDelete}
-    />
-  )}
-  {tab === "certificados" && (
-    <TablaCertificados 
-      certificados={certificados} 
-      onEdit={onEditCertificado} 
-      onDelete={onDelete}
-    />
-  )}
-  {tab === "cursos" && (
-    <TablaCursos 
-      cursos={cursos} 
-      onEdit={onEditCurso}  
-      onDelete={onDelete}
-      />
-  )}
- 
-</div>
-
+        {availableTabs.map(tabItem => {
+          if (tab !== tabItem.key) return null;
+          const Component = tabItem.component;
+          return (
+            <Component
+              key={tabItem.key}
+              {...{ [tabItem.key]: tabItem.data }}
+              onEdit={tabItem.onEdit}
+              onDelete={onDelete}
+            />
+          );
+        })}
       </div>
     </div>
   );
