@@ -23,27 +23,39 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
     
     def validate(self, attrs):
-        # Validaciones adicionales antes de autenticación
+        # Validaciones antes de autenticación
         username = attrs.get('username')
         password = attrs.get('password')
         
-        # Validar formato de username
         if not self.is_valid_username(username):
             raise serializers.ValidationError('Invalid username format')
-        
-        # Validar longitud de password
         if len(password) > 128:
             raise serializers.ValidationError('Password too long')
         
-        return super().validate(attrs)
+        # Ejecuta la validación original (autenticación)
+        data = super().validate(attrs)
+        
+        # Agregar info de usuario + permisos + grupos
+        user = self.user
+        permissions = list(user.get_all_permissions())  # permisos directos + por grupos
+        groups = list(user.groups.values_list('name', flat=True))
+        
+        data['user'] = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'first_name': getattr(user, 'first_name', ''),
+            'last_name': getattr(user, 'last_name', ''),
+            'permissions': permissions,
+            'groups': groups
+        }
+        
+        return data
     
     def is_valid_username(self, username):
         """Validar formato de username"""
         import re
-        
         if not username or len(username) < 3 or len(username) > 150:
             return False
-        
-        # Permitir solo caracteres alfanuméricos, guiones y underscores
         pattern = r'^[a-zA-Z0-9_-]+$'
         return bool(re.match(pattern, username))

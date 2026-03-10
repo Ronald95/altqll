@@ -1,0 +1,2 @@
+from .list import TrabajadorListSerializer
+from .detail import TrabajadorDetailSerializer

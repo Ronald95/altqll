@@ -1,0 +1,3 @@
+from .especialidad import CategoriaEspecialidadViewSet
+from .certificado import CategoriaCertificadoViewSet
+from .curso import CategoriaCursoViewSet

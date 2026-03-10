@@ -46,7 +46,7 @@ export default function Index() {
     const fetchCertificados = async (id) => {
       try {
         setLoading(true);
-        const response = await CertificadoAPI.getCertificadosByIdNave(id);
+        const response = await CertificadoAPI.getAllByIdNave(id);
         setCertificados(response);
       } catch (error) {
         console.error("Error al cargar certificados:", error);

@@ -1,6 +1,6 @@
 from django.db import models
 import uuid
-
+from django.conf import settings
 class Trabajador(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     ESTADO_CHOICES = [
@@ -14,7 +14,13 @@ class Trabajador(models.Model):
     correo = models.EmailField("Correo electrónico", blank=True, null=True)
     telefono = models.CharField("Teléfono", max_length=20, blank=True, null=True)
     estado = models.CharField("Estado", max_length=10, choices=ESTADO_CHOICES, default='activo')
-
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,   
+        on_delete=models.PROTECT,
+        related_name="trabajadores",
+        null=True,
+        blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

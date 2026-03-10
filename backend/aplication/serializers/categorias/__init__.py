@@ -1,0 +1,3 @@
+from .especialidad import CategoriaEspecialidadSerializer
+from .certificado import CategoriaCertificadoSerializer
+from .curso import CategoriaCursoSerializer

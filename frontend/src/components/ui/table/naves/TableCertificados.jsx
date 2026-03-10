@@ -11,20 +11,20 @@ const TableCertificados = ({ data, onEdit}) => {
     setFilteredData(data || []);
   }, [data]);
 
-  useEffect(() => {
-    if (!searchText) {
-      setFilteredData(data || []);
-      return;
-    }
-    const text = searchText.toLowerCase();
-    const filtered = data.filter(
-      (row) =>
-        row.tipo_nombre?.toLowerCase().includes(text) ||
-        row.nave_nombre?.toLowerCase().includes(text) ||
-        row.observacion?.toLowerCase().includes(text)
-    );
-    setFilteredData(filtered);
-  }, [searchText, data]);
+useEffect(() => {
+  if (!searchText) {
+    setFilteredData(data || []);
+    return;
+  }
+  const text = searchText.toLowerCase();
+  const filtered = data.filter(
+    (row) =>
+      row.categoria?.nombre?.toLowerCase().includes(text) ||
+      row.observacion?.toLowerCase().includes(text)
+  );
+  setFilteredData(filtered);
+}, [searchText, data]);
+
 
   const clearSearch = () => setSearchText("");
 
@@ -106,122 +106,120 @@ const TableCertificados = ({ data, onEdit}) => {
   };
 
   // Columnas
-  const columns = [
-    {
-      name: (
-        <div className="flex items-center gap-2">
-          <Award className="h-4 w-4 text-cyan-500" />
-          <span>Certificado / Documento</span>
+const columns = [
+  {
+    name: (
+      <div className="flex items-center gap-2">
+        <Award className="h-4 w-4 text-cyan-500" />
+        <span>Certificado / Documento</span>
+      </div>
+    ),
+    selector: (row) => row.categoria?.nombre,
+    sortable: true,
+    grow: 2,
+    cell: (row) => (
+      <div className="flex items-center gap-3 py-2">
+        <div className="bg-cyan-100 p-2 rounded-lg">
+          <FileCheck className="h-4 w-4 text-cyan-600" />
         </div>
-      ),
-      selector: (row) => row.tipo_nombre,
-      sortable: true,
-      grow: 2,
-      cell: (row) => (
-        <div className="flex items-center gap-3 py-2">
-          <div className="bg-cyan-100 p-2 rounded-lg">
-            <FileCheck className="h-4 w-4 text-cyan-600" />
-          </div>
-          <span className="font-semibold text-slate-700">
-            {row.tipo_nombre || "—"}
-          </span>
-        </div>
-      ),
-    },
-    {
-      name: (
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-cyan-500" />
-          <span>Fecha de Expiración</span>
-        </div>
-      ),
-      selector: (row) => row.fecha,
-      sortable: true,
-      width: "200px",
-      cell: (row) => {
-        if (!row.fecha) {
-          return (
-            <span className="text-slate-400 italic text-sm">Sin fecha</span>
-          );
-        }
-
-        const fecha = new Date(row.fecha);
-        if (isNaN(fecha.getTime())) {
-          return (
-            <span className="text-slate-400 italic text-sm">Fecha inválida</span>
-          );
-        }
-
-        // Calcular si está próximo a vencer (30 días)
-        const hoy = new Date();
-        const diasRestantes = Math.floor((fecha - hoy) / (1000 * 60 * 60 * 24));
-        const isExpired = diasRestantes < 0;
-        const isExpiringSoon = diasRestantes >= 0 && diasRestantes <= 30;
-
-        return (
-          <div className="flex items-center gap-2">
-            <Calendar className={`h-4 w-4 ${
-              isExpired ? 'text-red-600' : isExpiringSoon ? 'text-amber-600' : 'text-cyan-600'
-            }`} />
-            <div className="flex flex-col">
-              <span className={`font-medium text-sm ${
-                isExpired ? 'text-red-700' : isExpiringSoon ? 'text-amber-700' : 'text-slate-700'
-              }`}>
-                {fecha.toLocaleDateString("es-CL", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                })}
-              </span>
-              {isExpired && (
-                <span className="text-xs text-red-600 font-semibold">Vencido</span>
-              )}
-              {isExpiringSoon && (
-                <span className="text-xs text-amber-600 font-semibold">
-                  {diasRestantes} {diasRestantes === 1 ? 'día' : 'días'}
-                </span>
-              )}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      name: (
-        <div className="flex items-center gap-2">
-          <MessageSquare className="h-4 w-4 text-cyan-500" />
-          <span>Observación</span>
-        </div>
-      ),
-      selector: (row) => row.observacion || "—",
-      sortable: false,
-      grow: 1.5,
-      cell: (row) => (
-        <span className="text-slate-600 text-sm truncate" title={row.observacion}>
-          {row.observacion || "—"}
+        <span className="font-semibold text-slate-700">
+          {row.categoria?.nombre || "—"}
         </span>
-      ),
-    },
-    {
-      name: "Acciones",
-      width: "140px",
-      center: true,
-      cell: (row) => (
-        <div className="flex gap-2 items-center justify-center">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(row);
-            }}
-            className="p-2 hover:bg-cyan-50 rounded-lg transition-all hover:scale-110 group"
-            title="Editar"
-          >
-            <Edit className="h-5 w-5 text-cyan-600 group-hover:text-cyan-700" />
-          </button>
+      </div>
+    ),
+  },
+  {
+    name: (
+      <div className="flex items-center gap-2">
+        <Calendar className="h-4 w-4 text-cyan-500" />
+        <span>Fecha de Expiración</span>
+      </div>
+    ),
+    selector: (row) => row.fecha_vigencia,
+    sortable: true,
+    width: "200px",
+    cell: (row) => {
+      if (!row.fecha_vigencia) {
+        return <span className="text-slate-400 italic text-sm">Sin fecha</span>;
+      }
+
+      const fecha = new Date(row.fecha_vigencia);
+      if (isNaN(fecha.getTime())) {
+        return <span className="text-slate-400 italic text-sm">Fecha inválida</span>;
+      }
+
+      const hoy = new Date();
+      const diasRestantes = Math.floor((fecha - hoy) / (1000 * 60 * 60 * 24));
+      const isExpired = diasRestantes < 0;
+      const isExpiringSoon = diasRestantes >= 0 && diasRestantes <= 30;
+
+      return (
+        <div className="flex items-center gap-2">
+          <Calendar
+            className={`h-4 w-4 ${
+              isExpired ? "text-red-600" : isExpiringSoon ? "text-amber-600" : "text-cyan-600"
+            }`}
+          />
+          <div className="flex flex-col">
+            <span
+              className={`font-medium text-sm ${
+                isExpired ? "text-red-700" : isExpiringSoon ? "text-amber-700" : "text-slate-700"
+              }`}
+            >
+              {fecha.toLocaleDateString("es-CL", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
+            </span>
+            {isExpired && <span className="text-xs text-red-600 font-semibold">Vencido</span>}
+            {isExpiringSoon && (
+              <span className="text-xs text-amber-600 font-semibold">
+                {diasRestantes} {diasRestantes === 1 ? "día" : "días"}
+              </span>
+            )}
+          </div>
         </div>
-      ),
+      );
     },
-  ];
+  },
+  {
+    name: (
+      <div className="flex items-center gap-2">
+        <MessageSquare className="h-4 w-4 text-cyan-500" />
+        <span>Observación</span>
+      </div>
+    ),
+    selector: (row) => row.observacion || "—",
+    sortable: false,
+    grow: 1.5,
+    cell: (row) => (
+      <span className="text-slate-600 text-sm truncate" title={row.observacion}>
+        {row.observacion || "—"}
+      </span>
+    ),
+  },
+  {
+    name: "Acciones",
+    width: "140px",
+    center: true,
+    cell: (row) => (
+      <div className="flex gap-2 items-center justify-center">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(row);
+          }}
+          className="p-2 hover:bg-cyan-50 rounded-lg transition-all hover:scale-110 group"
+          title="Editar"
+        >
+          <Edit className="h-5 w-5 text-cyan-600 group-hover:text-cyan-700" />
+        </button>
+      </div>
+    ),
+  },
+];
+
 
   const paginationOptions = {
     rowsPerPageText: "Filas por página:",

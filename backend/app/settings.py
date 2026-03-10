@@ -13,6 +13,7 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+AUTH_USER_MODEL = 'aplication.User'
 
 # ------------------------------------------------------------------------------
 # CORE
@@ -21,15 +22,10 @@ SECRET_KEY = config('SECRET_KEY', default='unsafe-secret-key')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
 
-
-# SUPABASE_URL = os.getenv("VITE_SUPABASE_URL")
-# SUPABASE_KEY = os.getenv("VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY")
-
-
 SUPABASE_URL = os.getenv("SUPABASE_URL")  # Ej: https://xyzcompany.supabase.co
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")  # Service role key
 
-AUTH_USER_MODEL = 'aplication.CustomUser'
+
 
 
 SYSTEM = platform.system()  # Detecta 'Windows', 'Linux', 'Darwin' (macOS)
@@ -42,7 +38,11 @@ if SYSTEM == "Windows":
 else:
     # Linux (Render) y macOS → usar PATH del sistema
     POPPLER_PATH = None
-print(f"🖨️ POPPLER_PATH detectado: {POPPLER_PATH}")
+import sys
+# Print with proper encoding for Windows
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8')
+print(f"[POPPLER] Ruta detectada: {POPPLER_PATH}")
 
 # ------------------------------------------------------------------------------
 # APPS

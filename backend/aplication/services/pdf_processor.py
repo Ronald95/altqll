@@ -8,7 +8,7 @@ from pdf2image.exceptions import PDFInfoNotInstalledError
 from PIL import ImageFilter
 from fpdf import FPDF
 from aplication.models import ProcessedPDF
-from aplication.serializers import PDFUploadSerializer
+from aplication.serializers.pdf.pdf import PDFUploadSerializer
 
 # Servicio Supabase
 from .supabase_client import upload_to_supabase, BUCKET_NAME

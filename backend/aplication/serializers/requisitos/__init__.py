@@ -1,0 +1,1 @@
+from .requisito_certificado_nave import RequisitoCertificadoNaveSerializer

@@ -1,5 +1,5 @@
 from .Trabajador import Trabajador
-from .User import CustomUser
+from .User import User
 
 from .CategoriaCurso import CategoriaCurso
 from .Curso import Curso    

@@ -1,5 +1,147 @@
 from django.contrib import admin
-from aplication.models import ProcessedPDF, CategoriaNave, CategoriaCertificadoNave, Naves, RequisitoCertificadoNave, CertificadoNave, CategoriaTitulo, Titulo, CategoriaPermiso, Permiso, Trabajador, CategoriaPirotecnia, PirotecniaNave, CategoriaEstudioNave, EstudioNave, CategoriaEspecialidad, Especialidad, EspecialidadImagen, CategoriaCertificado, Certificado, CertificadoImagen
+from aplication.models import User,ProcessedPDF, CategoriaNave, CategoriaCertificadoNave, Naves, RequisitoCertificadoNave, CertificadoNave, CategoriaTitulo, Titulo, CategoriaPermiso, Permiso, Trabajador, CategoriaPirotecnia, PirotecniaNave, CategoriaEstudioNave, EstudioNave, CategoriaEspecialidad, Especialidad, EspecialidadImagen, CategoriaCertificado, Certificado, CertificadoImagen, CategoriaCurso, Curso, CategoriaEspecialidad, EspecialidadImagen
+
+
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
+    list_display = ('username', 'email', 'is_staff', 'is_active')
+    list_filter = ('is_staff', 'is_active', 'groups')
+    search_fields = ('username', 'email')
+    ordering = ('username',)
+    filter_horizontal = ('groups', 'user_permissions')  # para asignar grupos y permisos
+    fieldsets = (
+        (None, {'fields': ('username', 'password')}),
+        ('Información personal', {'fields': ('first_name', 'last_name', 'email', 'cargo')}),
+        ('Permisos', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Fechas importantes', {'fields': ('last_login', 'date_joined')}),
+    )
+
+
+# -------------------------------
+# CategoriaCertificado
+# -------------------------------
+@admin.register(CategoriaCertificado)
+class CategoriaCertificadoAdmin(admin.ModelAdmin):
+    list_display = ('codigo', 'nombre', 'user')
+    search_fields = ('codigo', 'nombre')
+    list_filter = ('user',)
+    ordering = ('codigo',)
+    readonly_fields = ()
+
+    def save_model(self, request, obj, form, change):
+        if not obj.user:
+            obj.user = request.user
+        super().save_model(request, obj, form, change)
+
+
+# -------------------------------
+# Certificado
+# -------------------------------
+@admin.register(Certificado)
+class CertificadoAdmin(admin.ModelAdmin):
+    list_display = ('trabajador', 'categoria', 'fecha_vigencia', 'user')
+    search_fields = ('trabajador__nombre', 'categoria__nombre')
+    list_filter = ('categoria', 'fecha_vigencia', 'user')
+    autocomplete_fields = ('trabajador', 'categoria')
+    ordering = ('-fecha_vigencia',)
+
+    def save_model(self, request, obj, form, change):
+        if not obj.user:
+            obj.user = request.user
+        super().save_model(request, obj, form, change)
+
+
+# -------------------------------
+# CertificadoImagen
+# -------------------------------
+@admin.register(CertificadoImagen)
+class CertificadoImagenAdmin(admin.ModelAdmin):
+    list_display = ('certificado', 'tipo', 'orden', 'user', 'created_at')
+    list_filter = ('tipo', 'user', 'created_at')
+    search_fields = ('certificado__trabajador__nombre', 'certificado__categoria__nombre')
+    autocomplete_fields = ('certificado',)
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('orden',)
+
+
+# -------------------------------
+# CategoriaEspecialidad
+# -------------------------------
+@admin.register(CategoriaEspecialidad)
+class CategoriaEspecialidadAdmin(admin.ModelAdmin):
+    list_display = ('codigo', 'nombre', 'user')
+    search_fields = ('codigo', 'nombre')
+    list_filter = ('user',)
+    ordering = ('codigo',)
+
+    def save_model(self, request, obj, form, change):
+        if not obj.user:
+            obj.user = request.user
+        super().save_model(request, obj, form, change)
+
+
+# -------------------------------
+# Especialidad
+# -------------------------------
+@admin.register(Especialidad)
+class EspecialidadAdmin(admin.ModelAdmin):
+    list_display = ('trabajador', 'categoria', 'fecha_vigencia', 'user', 'created_at')
+    list_filter = ('categoria', 'fecha_vigencia', 'user')
+    search_fields = ('trabajador__nombre', 'categoria__nombre')
+    autocomplete_fields = ('trabajador', 'categoria')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('-fecha_vigencia',)
+
+    def save_model(self, request, obj, form, change):
+        if not obj.user:
+            obj.user = request.user
+        super().save_model(request, obj, form, change)
+
+
+# -------------------------------
+# EspecialidadImagen
+# -------------------------------
+@admin.register(EspecialidadImagen)
+class EspecialidadImagenAdmin(admin.ModelAdmin):
+    list_display = ('especialidad', 'tipo', 'orden', 'user', 'created_at')
+    list_filter = ('tipo', 'user', 'created_at')
+    search_fields = ('especialidad__trabajador__nombre', 'especialidad__categoria__nombre')
+    autocomplete_fields = ('especialidad',)
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('orden',)
+
+
+# -------------------------------
+# CategoriaCurso
+# -------------------------------
+@admin.register(CategoriaCurso)
+class CategoriaCursoAdmin(admin.ModelAdmin):
+    list_display = ('codigo', 'nombre', 'user')
+    search_fields = ('codigo', 'nombre')
+    list_filter = ('user',)
+    ordering = ('codigo',)
+
+    def save_model(self, request, obj, form, change):
+        if not obj.user:
+            obj.user = request.user
+        super().save_model(request, obj, form, change)
+
+
+# -------------------------------
+# Curso
+# -------------------------------
+@admin.register(Curso)
+class CursoAdmin(admin.ModelAdmin):
+    list_display = ('trabajador', 'categoria', 'fecha_vigencia', 'estado', 'user')
+    list_filter = ('categoria', 'fecha_vigencia', 'estado', 'user')
+    search_fields = ('trabajador__nombre', 'categoria__nombre')
+    autocomplete_fields = ('trabajador', 'categoria')
+    ordering = ('-fecha_vigencia',)
+
+    def save_model(self, request, obj, form, change):
+        if not obj.user:
+            obj.user = request.user
+        super().save_model(request, obj, form, change)
 
 
 

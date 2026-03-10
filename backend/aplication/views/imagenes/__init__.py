@@ -1,0 +1,2 @@
+from .especialidad import EspecialidadImagenViewSet
+from .certificado import CertificadoImagenViewSet
