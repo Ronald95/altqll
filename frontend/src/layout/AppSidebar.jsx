@@ -49,7 +49,7 @@ const othersItems = [
     icon: <GiPositionMarker/>,
     name: "Posat naves",
     path: "/posat-naves",
-    permission: "aplication.posat_naves",
+    //permission: "aplication.view_posatnaves",
     subItems: [
       { name: "Mapa normal", path: "/posat-naves", pro: false },
       { name: "Reporte mapa", path: "/posat-naves-map", pro: false },
