@@ -8,7 +8,7 @@ import Input from "../../../form/input/InputField";
 import LoaderError from "../../../loading/LoaderError";
 import EstudioNaveAPI from "../../../../api/estudioNave";
 import { useNave } from "../../../../context/NaveContext";
-import TipoEstudioNaveAPI from "../../../../api/TipoEstudioNave";
+import TipoEstudioNaveAPI from "../../../../api/tipoEstudioNave";
 
 const FormEstudios = ({ isOpen, onClose, item, onItemUpdated }) => {
   const { naveSeleccionada } = useNave();
