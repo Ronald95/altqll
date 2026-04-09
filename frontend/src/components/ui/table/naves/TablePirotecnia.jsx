@@ -153,17 +153,17 @@ const TablePirotecnia = ({ data, onEdit, onDelete}) => {
           <span>Fecha Expiración</span>
         </div>
       ),
-      selector: (row) => row.fecha,
+      selector: (row) => row.fecha_vigencia,
       sortable: true,
       width: "180px",
       cell: (row) => {
-        if (!row.fecha) {
+        if (!row.fecha_vigencia) {
           return (
             <span className="text-slate-400 italic text-sm">Sin fecha</span>
           );
         }
 
-        const fecha = new Date(row.fecha);
+        const fecha = new Date(row.fecha_vigencia);
         if (isNaN(fecha.getTime())) {
           return (
             <span className="text-slate-400 italic text-sm">Fecha inválida</span>

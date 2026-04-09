@@ -47,6 +47,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'first_name': getattr(user, 'first_name', ''),
             'last_name': getattr(user, 'last_name', ''),
             'permissions': permissions,
+            'is_staff': user.is_staff,
+            'is_superuser': user.is_superuser,
             'groups': groups
         }
         

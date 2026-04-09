@@ -26,9 +26,9 @@ const FormCertificado = ({ isOpen, onClose, item, onItemUpdated }) => {
     formState: { errors },
   } = useForm({
     defaultValues: {
-      cantidad: "",
       fecha: "",
       observacion: "",
+      fecha_emision: "",
       tipo: null,
     },
   });
@@ -66,8 +66,8 @@ const FormCertificado = ({ isOpen, onClose, item, onItemUpdated }) => {
   useEffect(() => {
     if (item) {
       reset({
-        cantidad: item.cantidad || "",
         fecha: item.fecha ? item.fecha.split("T")[0] : "",
+        fecha_emision: item.fecha_emision ? item.fecha_emision.split("T")[0] : "",
         observacion: item.observacion || "",
         tipo: item.tipo_id
           ? { value: item.tipo_id, label: item.tipo_nombre }
@@ -75,7 +75,6 @@ const FormCertificado = ({ isOpen, onClose, item, onItemUpdated }) => {
       });
     } else {
       reset({
-        cantidad: "",
         fecha: "",
         observacion: "",
         tipo: null,
@@ -113,18 +112,18 @@ const FormCertificado = ({ isOpen, onClose, item, onItemUpdated }) => {
       setSubmitLoading(true);
 
       const payload = {
-        cantidad: parseInt(formData.cantidad),
-        fecha: formData.fecha ? formData.fecha.split("T")[0] : null,
+        fecha_vigencia: formData.fecha ? formData.fecha.split("T")[0] : null,
+        fecha_emision: formData.fecha_emision ? formData.fecha_emision.split("T")[0] : null,
         observacion: formData.observacion || "",
-        tipo: formData.tipo?.value,
-        nave: naveSeleccionada?.id,
+        categoria_id: formData.tipo?.value,
+        nave_id: naveSeleccionada?.id,
       };
 
       let response;
       if (item?.id) {
-        response = await CertificadoNaveAPI.updateCertificado(item.id, payload);
+        response = await CertificadoNaveAPI.update(item.id, payload);
       } else {
-        response = await CertificadoNaveAPI.createCertificado(payload);
+        response = await CertificadoNaveAPI.create(payload);
       }
 
       const newItem = {
@@ -254,7 +253,28 @@ const FormCertificado = ({ isOpen, onClose, item, onItemUpdated }) => {
                 )}
               </div>
 
-              {/* Fecha */}
+                
+              {/* Fecha emision */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700 font-medium">
+                  <Calendar className="w-4 h-4 text-cyan-600" />
+                  Fecha de Emisión
+                </Label>
+                <Input
+                  type="date"
+                  {...register("fecha_emision")}
+                  className="w-full"
+                />
+                <p className="text-gray-500 text-xs">
+                  Opcional
+                </p>
+                {errors.fecha_emision && (
+                  <p className="text-red-500 text-sm flex items-center gap-1 mt-1">
+                    <span>⚠</span> {errors.fecha_emision.message}
+                  </p>
+                )}
+              </div>
+              {/* Fecha expiracion */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700 font-medium">
                   <Calendar className="w-4 h-4 text-cyan-600" />

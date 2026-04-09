@@ -2,28 +2,28 @@ import apiClient from "../utils/auth";
 
 const TipoCertificadoNaveAPI = {
   async createTipoCertificado(payload) {
-    const response = await apiClient.post("/api/tipo_certificado/", payload);
+    const response = await apiClient.post("/api/categorias-certificados/", payload);
     return response.data;
   },
 
   async updateTipoCertificado(id, payload) {
-    const response = await apiClient.put(`/api/tipo_certificado/${id}/`, payload);
+    const response = await apiClient.put(`/api/categorias-certificados/${id}/`, payload);
     return response.data;
   },
 
   async deleteTipoCertificado(id) {
-    const response = await apiClient.delete(`/api/tipo_certificado/${id}/`);
+    const response = await apiClient.delete(`/api/categorias-certificados/${id}/`);
     return response.data;
   },
 
   async getTiposCertificado() {
-    const response = await apiClient.get("/api/tipo_certificado/");
+    const response = await apiClient.get("/api/categorias-certificados/");
     return response.data;
   },
 
   async getTiposCertificadoForSelect() {
     try {
-      const response = await apiClient.get("/api/tipo_certificado/");
+      const response = await apiClient.get("/api/categorias-certificados/");
       if (!Array.isArray(response.data)) {
         throw new Error("Formato de datos inválido");
       }

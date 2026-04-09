@@ -77,9 +77,9 @@ const FormPirotecnia = ({ isOpen, onClose, item, onItemUpdated }) => {
 
       const payload = {
         cantidad: parseInt(formData.cantidad),
-        fecha: formData.fecha,
+        fecha_vigencia: formData.fecha,
         observacion: formData.observacion || "",
-        tipo: formData.tipo?.value,
+        categoria: formData.tipo?.value,
         nave: naveSeleccionada?.id,
       };
 

@@ -2,28 +2,28 @@ import apiClient from "../utils/auth";
 
 const TipoPirotecniaNaveAPI = {
   async createTipoPirotecnia(payload) {
-    const response = await apiClient.post("/api/tipo_pirotecnia/", payload);
+    const response = await apiClient.post("/api/categorias_pirotecnia/", payload);
     return response.data;
   },
 
   async updateTipoPirotecnia(id, payload) {
-    const response = await apiClient.put(`/api/tipo_pirotecnia/${id}/`, payload);
+    const response = await apiClient.put(`/api/categorias_pirotecnia/${id}/`, payload);
     return response.data;
   },
 
   async deleteTipoPirotecnia(id) {
-    const response = await apiClient.delete(`/api/tipo_pirotecnia/${id}/`);
+    const response = await apiClient.delete(`/api/categorias_pirotecnia/${id}/`);
     return response.data;
   },
 
   async getTiposPirotecnia() {
-    const response = await apiClient.get("/api/tipo_pirotecnia/");
+    const response = await apiClient.get("/api/categorias_pirotecnia/");
     return response.data;
   },
 
   async getTiposPirotecniaForSelect() {
     try {
-      const response = await apiClient.get("/api/tipo_pirotecnia/");
+      const response = await apiClient.get("/api/categorias_pirotecnia/");
       if (!Array.isArray(response.data)) {
         throw new Error("Formato de datos inválido");
       }

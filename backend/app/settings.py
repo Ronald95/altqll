@@ -28,6 +28,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")  # Service role key
 
 
 
+
 SYSTEM = platform.system()  # Detecta 'Windows', 'Linux', 'Darwin' (macOS)
 
 if SYSTEM == "Windows":
@@ -60,11 +61,12 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',  # AGREGADO para blacklist
     'csp',
-
     # Local
     'aplication',
     'authentication.apps.AuthenticationConfig',
+    
 ]
+
 
 # ------------------------------------------------------------------------------
 # MIDDLEWARE (ORDEN CRÍTICO)

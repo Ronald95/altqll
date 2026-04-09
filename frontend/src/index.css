@@ -5,6 +5,7 @@ layer(base);
 
 @custom-variant dark (&:is(.dark *));
 
+
 @theme {
   --font-*: initial;
   --font-outfit: Outfit, sans-serif;

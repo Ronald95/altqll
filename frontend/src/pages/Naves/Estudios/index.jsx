@@ -207,7 +207,7 @@ export default function Index() {
                             </div>
                             <div className="flex-1">
                               <h3 className="text-xl font-bold text-slate-800 mb-2">
-                                {estudio.tipo?.nombre || "Sin tipo"}
+                                {estudio.categoria?.nombre || "Sin categoría"}
                               </h3>
                               <div className="flex flex-wrap items-center gap-4 text-sm">
                                 <span className="flex items-center gap-2 text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-200">

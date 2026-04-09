@@ -28,7 +28,9 @@ class CertificadoNaveSerializer(serializers.ModelSerializer):
 
     fecha_vigencia = serializers.DateField(
         format="%Y-%m-%d",
-        input_formats=["%Y-%m-%d"]
+        input_formats=["%Y-%m-%d"],
+        required=False,
+        allow_null=True
     )
 
     class Meta:

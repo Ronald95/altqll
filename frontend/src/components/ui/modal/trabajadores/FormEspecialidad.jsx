@@ -3,13 +3,12 @@ import { Controller, useForm } from "react-hook-form";
 import SelectReact from "react-select";
 import { CreditCard, Image, Calendar, MessageSquare } from "lucide-react";
 import LoaderError from "../../../loading/LoaderError";
-import MatriculasAPI from "../../../../api/especialidades";
 import EspecialidadesAPI from "../../../../api/especialidades";
 import Input from "../../../form/input/InputField";
 import Label from "../../../form/Label";
 import ImageCropPolygon from "../../images/ImageCropPolygon";
 
-const FormEspecialidad = ({ isOpen, onClose, data, trabajador }) => {
+const FormEspecialidad = ({ isOpen, onClose, data, trabajador, onSuccess }) => {
   const {
     register,
     handleSubmit,
@@ -38,18 +37,18 @@ const FormEspecialidad = ({ isOpen, onClose, data, trabajador }) => {
 
   const isEdit = Boolean(data?.id);
 
-  // Cargar tipos de matrícula
+  // Cargar tipos de especialidad
   useEffect(() => {
     if (!isOpen) return;
 
     const fetchTipos = async () => {
       setLoading(true);
       try {
-        const data = await EspecialidadesAPI.getCategoriasEspecialidadesForSelect();
-        setTipos(data);
+        const response = await EspecialidadesAPI.getCategoriasEspecialidadesForSelect();
+        setTipos(response);
       } catch (err) {
         console.error(err);
-        setError("No se pudieron cargar los tipos de matrícula.");
+        setError("No se pudieron cargar los tipos de especialidad.");
       } finally {
         setLoading(false);
       }
@@ -71,36 +70,42 @@ const FormEspecialidad = ({ isOpen, onClose, data, trabajador }) => {
       });
       if (data.foto_frontal) setCroppedImage(data.foto_frontal);
     } else {
-      reset();
+      reset({
+        tipo_especialidad: null,
+        fecha_vigencia: "",
+        observacion: "",
+        predeterminada: false,
+      });
       setFrontalFile(null);
       setCroppedImage(null);
     }
   }, [data, reset]);
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (formData) => {
     if (!trabajador?.id) return;
 
     try {
       setSubmitLoading(true);
 
-      const formData = new FormData();
-      formData.append("trabajador", trabajador.id);
-      formData.append("tipo_especialidad", data.tipo_especialidad?.value);
-      formData.append("fecha_vigencia", data.fecha_vigencia);
-      formData.append("observacion", data.observacion || "");      
-      formData.append("predeterminada", data.predeterminada);
+      const payload = new FormData();
+      payload.append("trabajador", trabajador.id);
+      payload.append("tipo_especialidad", formData.tipo_especialidad?.value);
+      payload.append("fecha_vigencia", formData.fecha_vigencia);
+      payload.append("observacion", formData.observacion || "");      
+      payload.append("predeterminada", formData.predeterminada);
 
-      if (frontalFile) formData.append("foto_frontal", frontalFile);
+      if (frontalFile) payload.append("foto_frontal", frontalFile);
 
       if (isEdit) {
-        await EspecialidadesAPI.update(data.id, formData);
+        await EspecialidadesAPI.update(data.id, payload);
       } else {
-        await EspecialidadesAPI.create(formData);
+        await EspecialidadesAPI.create(payload);
       }
 
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      console.error("Error al guardar matrícula", err);
+      console.error("Error al guardar especialidad", err);
       setError("Ocurrió un error al guardar.");
     } finally {
       setSubmitLoading(false);
@@ -112,13 +117,26 @@ const FormEspecialidad = ({ isOpen, onClose, data, trabajador }) => {
     setFrontalFile(file);
   };
 
+  // Estilos para SelectReact - Diseño corporativo
   const customStyles = {
     control: (base, state) => ({
       ...base,
       minHeight: "2.75rem",
-      borderColor: state.isFocused ? "#6366f1" : "#e5e7eb",
-      borderRadius: "0.75rem",
-      borderWidth: "2px",
+      borderColor: state.isFocused ? "#4b5563" : "#d1d5db",
+      borderWidth: "1px",
+      borderRadius: "0.5rem",
+      boxShadow: state.isFocused ? "0 0 0 1px #4b5563" : "none",
+      "&:hover": {
+        borderColor: "#9ca3af",
+      },
+    }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isFocused ? "#f3f4f6" : "white",
+      color: "#1f2937",
+      "&:active": {
+        backgroundColor: "#e5e7eb",
+      },
     }),
   };
 
@@ -126,120 +144,139 @@ const FormEspecialidad = ({ isOpen, onClose, data, trabajador }) => {
 
   return (
     <LoaderError loading={loading} error={error}>
-      <div className="bg-white rounded-xl overflow-hidden">
+      <div className="relative w-full bg-white overflow-hidden rounded-lg border border-gray-300">
         {/* Header */}
-        <div className="bg-indigo-600 px-6 py-4 text-white">
-          <h2 className="text-2xl font-bold">
-            {isEdit ? "Actualizar matrícula" : "Nueva matrícula"}
-          </h2>
-          <p className="text-indigo-100 text-sm">
-            Trabajador: {trabajador.nombre}
-          </p>
+        <div className="px-6 py-5 border-b border-gray-300">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-gray-100 rounded-lg">
+              <CreditCard className="w-6 h-6 text-gray-700" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-800">
+                {isEdit ? "Actualizar Especialidad" : "Registrar Nueva Especialidad"}
+              </h2>
+              <p className="text-gray-600 text-sm mt-1">
+                Trabajador: {trabajador.nombre}
+              </p>
+            </div>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
-          {/* Tipo matrícula */}
-          <div>
-            <Label className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4" />
-              Tipo de Matrícula *
+        <form onSubmit={handleSubmit(onSubmit)} className="p-6">
+          {/* Tipo de Especialidad */}
+          <div className="mb-6">
+            <Label className="text-gray-700 font-medium text-sm flex items-center gap-2 mb-2">
+              <CreditCard className="w-4 h-4 text-gray-500" />
+              Tipo de Especialidad <span className="text-red-500">*</span>
             </Label>
             <Controller
               name="tipo_especialidad"
               control={control}
-              rules={{ required: "Seleccione un tipo" }}
+              rules={{ required: "Seleccione un tipo de especialidad" }}
               render={({ field }) => (
                 <SelectReact
                   {...field}
                   options={tipos}
-                  placeholder="Seleccione..."
+                  placeholder="Seleccione un tipo..."
                   styles={customStyles}
+                  className="react-select-container"
+                  classNamePrefix="react-select"
                 />
               )}
             />
             {errors.tipo_especialidad && (
-              <p className="text-red-500 text-sm">{errors.tipo_especialidad.message}</p>
+              <p className="text-red-500 text-sm mt-1">{errors.tipo_especialidad.message}</p>
             )}
           </div>
 
-          {/* Fecha vigencia */}
-          <div>
-            <Label className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Fecha de Vigencia *
+          {/* Fecha de Vigencia */}
+          <div className="mb-6">
+            <Label className="text-gray-700 font-medium text-sm flex items-center gap-2 mb-2">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              Fecha de Vigencia <span className="text-red-500">*</span>
             </Label>
             <Input
               type="date"
-              {...register("fecha_vigencia", { required: "La fecha es obligatoria" })}
+              {...register("fecha_vigencia", { required: "La fecha de vigencia es obligatoria" })}
+              className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-gray-600 focus:ring-1 focus:ring-gray-400 outline-none"
             />
+            {errors.fecha_vigencia && (
+              <p className="text-red-500 text-sm mt-1">{errors.fecha_vigencia.message}</p>
+            )}
           </div>
 
-          {/* Fotos */}
-          <div className="grid grid-cols-6 md:grid-cols-1 gap-4">
-            <div>
-              <Label className="flex items-center gap-2">
-                <Image className="w-4 h-4" />
-                Foto Frontal
-              </Label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
+          {/* Foto Frontal */}
+          <div className="mb-6">
+            <Label className="text-gray-700 font-medium text-sm flex items-center gap-2 mb-2">
+              <Image className="w-4 h-4 text-gray-500" />
+              Foto Frontal
+            </Label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                if (e.target.files[0]) {
                   setFrontalFile(e.target.files[0]);
                   setCroppedImage(null);
-                }}
-                className="border p-2 rounded"
-              />
-              {frontalFile && (
+                }
+              }}
+              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100 cursor-pointer"
+            />
+            {frontalFile && (
+              <div className="mt-4">
                 <ImageCropPolygon imageFile={frontalFile} onCrop={handleCrop} />
-              )}
-              {croppedImage && (
-                <div className="mt-4 border p-4 rounded bg-gray-50">
-                  <h2 className="font-bold mb-2">Imagen Recortada:</h2>
-                  <img src={croppedImage} alt="Recortada" className="max-w-full" />
-                </div>
-              )}
-            </div>
+              </div>
+            )}
+            {croppedImage && (
+              <div className="mt-4 p-4 border border-gray-300 rounded-lg bg-gray-50">
+                <p className="text-sm font-medium text-gray-700 mb-2">Vista previa:</p>
+                <img src={croppedImage} alt="Recortada" className="max-w-full h-auto rounded-md" />
+              </div>
+            )}
           </div>
 
           {/* Observación */}
-          <div>
-            <Label className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
+          <div className="mb-6">
+            <Label className="text-gray-700 font-medium text-sm flex items-center gap-2 mb-2">
+              <MessageSquare className="w-4 h-4 text-gray-500" />
               Observación
             </Label>
             <textarea
-              rows={3}
+              rows={4}
               {...register("observacion")}
-              className="w-full border-2 rounded-xl px-4 py-2"
+              placeholder="Ingrese observaciones o notas adicionales (opcional)"
+              className="w-full rounded-md border border-gray-300 focus:border-gray-600 focus:ring-1 focus:ring-gray-400 px-3 py-2 resize-none outline-none text-gray-700"
             />
           </div>
 
           {/* Predeterminada */}
-          <div className="flex items-center gap-3">
+          <div className="mb-6 flex items-center gap-3">
             <input
               type="checkbox"
               {...register("predeterminada")}
-              className="h-5 w-5 accent-indigo-600"
+              className="h-4 w-4 rounded border-gray-300 text-gray-700 focus:ring-gray-500"
             />
-            <span className="text-sm">Establecer como matrícula predeterminada</span>
+            <Label className="text-gray-700 text-sm font-normal cursor-pointer">
+              Establecer como especialidad predeterminada
+            </Label>
           </div>
 
           {/* Botones */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-300">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border rounded-xl"
+              disabled={submitLoading}
+              className="px-5 py-2 font-medium rounded-md border border-gray-300 bg-gray-50 hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitLoading}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-xl"
+              className="px-5 py-2 font-medium bg-gray-700 hover:bg-gray-800 text-white rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitLoading ? "Guardando..." : "Guardar"}
+              {submitLoading ? "Guardando..." : isEdit ? "Actualizar Especialidad" : "Guardar Especialidad"}
             </button>
           </div>
         </form>

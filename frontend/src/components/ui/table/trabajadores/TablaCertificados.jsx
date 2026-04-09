@@ -1,3 +1,6 @@
+
+import dayjs from "dayjs";
+
 const TablaCertificados = ({ certificados = [], onEdit, onDelete }) => {
   if (!certificados.length) {
     return <p className="text-gray-500">No hay certificados disponibles.</p>;

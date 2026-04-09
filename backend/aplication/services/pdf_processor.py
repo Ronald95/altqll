@@ -11,7 +11,7 @@ from aplication.models import ProcessedPDF
 from aplication.serializers.pdf.pdf import PDFUploadSerializer
 
 # Servicio Supabase
-from .supabase_client import upload_to_supabase, BUCKET_NAME
+from .supabase_client import upload_to_supabase, BUCKET_PDFS
 
 
 def procesar_pdf(request):

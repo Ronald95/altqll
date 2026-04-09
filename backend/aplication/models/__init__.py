@@ -34,6 +34,8 @@ from .CategoriaPermiso import CategoriaPermiso
 
 from .CategoriaEstudioNave import CategoriaEstudioNave
 from .EstudioNave import EstudioNave
+from .DetalleEstudio import DetalleEstudio
+
 
 
 

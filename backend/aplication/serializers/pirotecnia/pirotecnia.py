@@ -6,7 +6,7 @@ class PirotecniaSerializer(serializers.ModelSerializer):
     # Campos legibles
     categoria_nombre = serializers.CharField(source="categoria.nombre", read_only=True)
     nave_nombre = serializers.CharField(source="nave.nombre", read_only=True)
-    fecha = serializers.DateField(
+    fecha_vigencia = serializers.DateField(
         format="%Y-%m-%d",
         input_formats=["%Y-%m-%d"],
         allow_null=True,
@@ -25,7 +25,7 @@ class PirotecniaSerializer(serializers.ModelSerializer):
             "nave",
             "nave_nombre",
             "cantidad",
-            "fecha",
+            "fecha_vigencia",
             "observacion",
             "user",
             "created_at",

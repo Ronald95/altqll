@@ -15,33 +15,28 @@ const LoadingSpinner = ({ message = "Verificando sesión..." }) => (
 
 /**
  * ProtectedRoute
- * @param {string|string[]} allowedRoles - Roles permitidos
+ * @param {string|string[]} groups - Grupos permitidos
+ * @param {string|string[]} permissions - Permisos requeridos
  * @param {string} redirectTo - Ruta login
  * @param {ReactNode} fallback - Componente mientras se verifica
  */
-const ProtectedRoute = ({ allowedRoles = null, redirectTo = "/signin", fallback = null }) => {
-  const { isAuthenticated, loading, user, checkAuth } = useAuth();
+const ProtectedRoute = ({
+  groups = null,
+  permissions = null,
+  redirectTo = "/signin",
+  fallback = null
+}) => {
+  const { isAuthenticated, loading, hasPermission, hasGroup } = useAuth();
   const location = useLocation();
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
-  useEffect(() => {
-    const verify = async () => {
-      try {
-        await checkAuth();
-      } catch (err) {
-        console.error("Error verificando auth:", err);
-      } finally {
-        setInitialCheckDone(true);
-      }
-    };
-    verify();
-  }, [checkAuth]);
 
-  if (loading || !initialCheckDone) {
+  // Spinner mientras se verifica
+  if (loading) {
     return fallback || <LoadingSpinner />;
   }
 
-  if (!isAuthenticated) {
+  // No autenticado → login
+if (!isAuthenticated) {
     return (
       <Navigate
         to={redirectTo}
@@ -51,53 +46,47 @@ const ProtectedRoute = ({ allowedRoles = null, redirectTo = "/signin", fallback 
     );
   }
 
-  if (allowedRoles && allowedRoles.length > 0) {
-    const hasRole = Array.isArray(allowedRoles)
-      ? allowedRoles.includes(user?.role) || user?.role === "admin"
-      : user?.role === allowedRoles || user?.role === "admin";
 
-    if (!hasRole) {
-      return (
-        <Navigate
-          to="/unauthorized"
-          state={{ allowedRoles, currentRole: user?.role }}
-          replace
-        />
-      );
-    }
+  // Verificar grupos
+if (groups) {
+    const groupArray = Array.isArray(groups) ? groups : [groups];
+    const hasAny = groupArray.some(g => hasGroup(g));
+    if (!hasAny) return <Navigate to="/unauthorized" replace />;
   }
 
+  // Verificar permisos
+  if (permissions) {
+    const permArray = Array.isArray(permissions) ? permissions : [permissions];
+    const hasAny = permArray.some(p => hasPermission(p));
+    if (!hasAny) return <Navigate to="/unauthorized" replace />;
+  }
+  // Todo ok → renderizar children
   return <Outlet />;
 };
 
-// Rutas específicas
+export default ProtectedRoute;
+
+/* ============================
+   Rutas específicas de ejemplo
+=============================== */
 export const AdminRoute = ({ fallback, ...props }) => (
-  <ProtectedRoute allowedRoles="admin" fallback={fallback} {...props} />
+  <ProtectedRoute groups="admin" fallback={fallback} {...props} />
 );
 
-export const ModeratorRoute = ({ fallback, ...props }) => (
-  <ProtectedRoute allowedRoles="moderator" fallback={fallback} {...props} />
+export const MultiGroupRoute = ({ groups, permissions, fallback, ...props }) => (
+  <ProtectedRoute groups={groups} permissions={permissions} fallback={fallback} {...props} />
 );
 
-export const MultiRoleRoute = ({ allowedRoles, fallback, ...props }) => (
-  <ProtectedRoute allowedRoles={allowedRoles} fallback={fallback} {...props} />
-);
-
-// Hook para permisos en componentes
+/* ============================
+   Hook para usar permisos en componentes
+=============================== */
 export const usePermissions = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { hasPermission, hasGroup, isAuthenticated } = useAuth();
 
   return {
-    canAccess: (roles) => {
-      if (!isAuthenticated || !user) return false;
-      if (!roles) return true;
-      const roleArray = Array.isArray(roles) ? roles : [roles];
-      return roleArray.includes(user.role) || user.role === "admin";
-    },
-    isAdmin: isAuthenticated && user?.role === "admin",
-    isModerator: isAuthenticated && user?.role === "moderator",
-    hasRole: (role) => isAuthenticated && user?.role === role
+    can: (permissions) => isAuthenticated && (!permissions || hasPermission(permissions)),
+    canAny: (permissions) => isAuthenticated && (!permissions || hasPermission(permissions)),
+    inGroup: (group) => isAuthenticated && hasGroup(group),
+    inAnyGroup: (groups) => isAuthenticated && hasGroup(groups)
   };
 };
-
-export default ProtectedRoute;

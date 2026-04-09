@@ -1,5 +1,22 @@
 from django.contrib import admin
-from aplication.models import User,ProcessedPDF, CategoriaNave, CategoriaCertificadoNave, Naves, RequisitoCertificadoNave, CertificadoNave, CategoriaTitulo, Titulo, CategoriaPermiso, Permiso, Trabajador, CategoriaPirotecnia, PirotecniaNave, CategoriaEstudioNave, EstudioNave, CategoriaEspecialidad, Especialidad, EspecialidadImagen, CategoriaCertificado, Certificado, CertificadoImagen, CategoriaCurso, Curso, CategoriaEspecialidad, EspecialidadImagen
+from aplication.models import User,ProcessedPDF, CategoriaNave, CategoriaCertificadoNave, Naves, RequisitoCertificadoNave, CertificadoNave, CategoriaTitulo, Titulo, CategoriaPermiso, Permiso, Trabajador, CategoriaPirotecnia, PirotecniaNave, CategoriaEstudioNave, EstudioNave, CategoriaEspecialidad, Especialidad, EspecialidadImagen, CategoriaCertificado, Certificado, CertificadoImagen, CategoriaCurso, Curso, CategoriaEspecialidad, EspecialidadImagen, DetalleEstudio
+
+
+@admin.register(DetalleEstudio)
+class DetalleEstudioAdmin(admin.ModelAdmin):
+    list_display = (
+        "nombre",
+        "estudio",
+        "cantidad",
+        "peso_total_tons",
+        "user",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = ("estudio", "user", "created_at")
+    search_fields = ("nombre", "descripcion", "estudio__id")
+    readonly_fields = ("created_at", "updated_at")
+    ordering = ("-created_at",)
 
 
 @admin.register(User)

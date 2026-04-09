@@ -1,20 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import SelectReact from "react-select";
 import {
-  Sparkles,
   Users,
   User,
   CreditCard,
-  Briefcase,
   Mail,
   Phone,
   MessageSquare,
-  X,
 } from "lucide-react";
 import LoaderError from "../../../loading/LoaderError";
 import TrabajadoresAPI from "../../../../api/trabajadores";
-import CargosApi from "../../../../api/cargos";
 import Input from "../../../form/input/InputField";
 import Label from "../../../form/Label";
 
@@ -34,17 +29,16 @@ const FormTrabajadores = ({ isOpen, onClose, item, onItemUpdated }) => {
       telefono: "",
       observacion: "",
     },
-    mode: "onChange", // evita validaciones prematuras
+    mode: "onChange",
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-
+  const isEdit = Boolean(item?.id);
 
   useEffect(() => {
-    console.log("item", item);
     if (item) {
       reset({
         nombre: item.nombre || "",
@@ -95,68 +89,40 @@ const FormTrabajadores = ({ isOpen, onClose, item, onItemUpdated }) => {
       onClose();
     } catch (err) {
       console.error("❌ Error al guardar:", err);
+      setError("Error guardando trabajador");
     } finally {
       setSubmitLoading(false);
     }
   };
 
-  const customStyles = {
-    control: (base, state) => ({
-      ...base,
-      minHeight: "2.75rem",
-      borderColor: state.isFocused ? "#22c55e" : "#e5e7eb",
-      boxShadow: state.isFocused ? "0 0 0 3px rgba(34, 197, 94, 0.1)" : "none",
-      borderRadius: "0.75rem",
-      borderWidth: "2px",
-      "&:hover": { borderColor: "#22c55e" },
-    }),
-    option: (base, state) => ({
-      ...base,
-      backgroundColor: state.isSelected
-        ? "#22c55e"
-        : state.isFocused
-        ? "#dcfce7"
-        : "white",
-      color: state.isSelected ? "white" : "#111827",
-      "&:active": { backgroundColor: "#22c55e" },
-    }),
-  };
-
-  const isEdit = Boolean(item?.id);
-
   return (
     <LoaderError loading={loading} error={error}>
-      <div className="relative w-full bg-white overflow-hidden">
+      <div className="relative w-full bg-white overflow-hidden rounded-lg border border-gray-300">
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-green-700 px-8 py-6 text-white shadow-lg">
+        <div className="px-6 py-5 border-b border-gray-300">
           <div className="flex items-center gap-3 mb-2">
-            <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
-              <Users className="w-7 h-7" />
-            </div>
+            <Users className="w-6 h-6 text-gray-700" />
             <div>
-              <h2 className="text-3xl font-bold">
+              <h2 className="text-2xl font-semibold text-gray-800">
                 {isEdit ? "Actualizar Trabajador" : "Registrar Nuevo Trabajador"}
               </h2>
-              <p className="text-green-100 text-sm mt-1">
+              <p className="text-gray-600 text-sm mt-1">
                 Complete los datos del trabajador
               </p>
             </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="p-8 pb-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="p-6">
           {/* Información Personal */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-5 pb-2 border-b-2 border-green-600">
-              <User className="w-5 h-5 text-green-600" />
-              <h3 className="text-xl font-semibold text-gray-800">Información Personal</h3>
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-4 pb-1 border-b border-gray-300">
+              <User className="w-5 h-5 text-gray-600" />
+              <h3 className="text-lg font-medium text-gray-800">Información Personal</h3>
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Nombre */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700 font-medium text-sm">
-                  <User className="w-4 h-4 text-green-600" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-gray-700 font-medium text-sm">
                   Nombre Completo <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -166,22 +132,19 @@ const FormTrabajadores = ({ isOpen, onClose, item, onItemUpdated }) => {
                     required: "El nombre es obligatorio",
                     minLength: { value: 3, message: "El nombre debe tener al menos 3 caracteres" },
                   })}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all outline-none"
+                  className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-gray-600 focus:ring-1 focus:ring-gray-400 outline-none"
                 />
                 {errors.nombre && <p className="text-red-500 text-sm mt-1">{errors.nombre.message}</p>}
               </div>
-
-              {/* RUT */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700 font-medium text-sm">
-                  <CreditCard className="w-4 h-4 text-green-600" />
+              <div>
+                <Label className="text-gray-700 font-medium text-sm">
                   RUT <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   type="text"
                   placeholder="12.345.678-9"
                   {...register("rut", { required: "El RUT es obligatorio" })}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all outline-none"
+                  className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-gray-600 focus:ring-1 focus:ring-gray-400 outline-none"
                 />
                 {errors.rut && <p className="text-red-500 text-sm mt-1">{errors.rut.message}</p>}
               </div>
@@ -189,18 +152,14 @@ const FormTrabajadores = ({ isOpen, onClose, item, onItemUpdated }) => {
           </div>
 
           {/* Contacto */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-5 pb-2 border-b-2 border-green-600">
-              <Mail className="w-5 h-5 text-green-600" />
-              <h3 className="text-xl font-semibold text-gray-800">Información de Contacto</h3>
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-4 pb-1 border-b border-gray-300">
+              <Mail className="w-5 h-5 text-gray-600" />
+              <h3 className="text-lg font-medium text-gray-800">Información de Contacto</h3>
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700 font-medium text-sm">
-                  <Mail className="w-4 h-4 text-green-600" />
-                  Correo Electrónico
-                </Label>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-gray-700 font-medium text-sm">Correo Electrónico</Label>
                 <Input
                   placeholder="correo@ejemplo.com"
                   {...register("correo", {
@@ -209,23 +168,19 @@ const FormTrabajadores = ({ isOpen, onClose, item, onItemUpdated }) => {
                       message: "Formato de correo inválido",
                     },
                   })}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all outline-none"
+                  className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-gray-600 focus:ring-1 focus:ring-gray-400 outline-none"
                 />
                 {errors.correo && <p className="text-red-500 text-sm mt-1">{errors.correo.message}</p>}
               </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700 font-medium text-sm">
-                  <Phone className="w-4 h-4 text-green-600" />
-                  Teléfono
-                </Label>
+              <div>
+                <Label className="text-gray-700 font-medium text-sm">Teléfono</Label>
                 <Input
-                  type="telefono"
+                  type="tel"
                   placeholder="912345678"
                   {...register("telefono", {
                     pattern: { value: /^[0-9]{9}$/, message: "Formato de teléfono inválido" },
                   })}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all outline-none"
+                  className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-gray-600 focus:ring-1 focus:ring-gray-400 outline-none"
                 />
                 {errors.telefono && <p className="text-red-500 text-sm mt-1">{errors.telefono.message}</p>}
               </div>
@@ -233,50 +188,35 @@ const FormTrabajadores = ({ isOpen, onClose, item, onItemUpdated }) => {
           </div>
 
           {/* Observaciones */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-5 pb-2 border-b-2 border-green-600">
-              <MessageSquare className="w-5 h-5 text-green-600" />
-              <h3 className="text-xl font-semibold text-gray-800">Observaciones</h3>
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-4 pb-1 border-b border-gray-300">
+              <MessageSquare className="w-5 h-5 text-gray-600" />
+              <h3 className="text-lg font-medium text-gray-800">Observaciones</h3>
             </div>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2 text-gray-700 font-medium text-sm">
-                <MessageSquare className="w-4 h-4 text-green-600" />
-                Observaciones Adicionales
-              </Label>
-              <textarea
-                placeholder="Ingrese observaciones o notas adicionales (opcional)"
-                {...register("observacion")}
-                rows={4}
-                className="w-full rounded-xl border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all px-4 py-3 text-gray-700 resize-none outline-none"
-              />
-            </div>
+            <textarea
+              placeholder="Ingrese observaciones o notas adicionales (opcional)"
+              {...register("observacion")}
+              rows={4}
+              className="w-full rounded-md border border-gray-300 focus:border-gray-600 focus:ring-1 focus:ring-gray-400 px-3 py-2 resize-none outline-none text-gray-700"
+            />
           </div>
 
           {/* Botones */}
-          <div className="flex justify-end gap-3 pt-6 pb-2 border-t-2 border-gray-200">
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-300">
             <button
               type="button"
               onClick={onClose}
               disabled={submitLoading}
-              className="px-6 py-3 font-medium rounded-xl border-2 border-gray-300 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-2 font-medium rounded-md border border-gray-300 bg-gray-50 hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitLoading}
-              className="px-6 py-3 font-medium bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-2 font-medium bg-gray-700 hover:bg-gray-800 text-white rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitLoading ? (
-                <span className="flex items-center gap-2">
-                  <span className="animate-spin">⏳</span> Guardando...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  {isEdit ? "Actualizar Trabajador" : "Guardar Trabajador"}
-                </span>
-              )}
+              {submitLoading ? "Guardando..." : isEdit ? "Actualizar Trabajador" : "Guardar Trabajador"}
             </button>
           </div>
         </form>

@@ -1,0 +1,1 @@
+from .index import comparar_sueldos_view

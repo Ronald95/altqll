@@ -2,28 +2,28 @@ import apiClient from "../utils/auth";
 
 const TipoEstudioNaveAPI = {
   async createTipoEstudio(payload) {
-    const response = await apiClient.post("/api/tipo_estudio/", payload);
+    const response = await apiClient.post("/api/categorias_estudio_nave/", payload);
     return response.data;
   },
 
   async updateTipoEstudio(id, payload) {
-    const response = await apiClient.put(`/api/tipo_estudio/${id}/`, payload);
+    const response = await apiClient.put(`/api/categorias_estudio_nave/${id}/`, payload);
     return response.data;
   },
 
   async deleteTipoEstudio(id) {
-    const response = await apiClient.delete(`/api/tipo_estudio/${id}/`);
+    const response = await apiClient.delete(`/api/categorias_estudio_nave/${id}/`);
     return response.data;
   },
 
   async getTiposEstudio() {
-    const response = await apiClient.get("/api/tipo_estudio/");
+    const response = await apiClient.get("/api/categorias_estudio_nave/");
     return response.data;
   },
 
   async getTiposEstudioForSelect() {
     try {
-      const response = await apiClient.get("/api/tipo_estudio/");
+      const response = await apiClient.get("/api/categorias_estudio_nave/");
       if (!Array.isArray(response.data)) {
         throw new Error("Formato de datos inválido");
       }

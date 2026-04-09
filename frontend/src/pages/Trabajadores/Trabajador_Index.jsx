@@ -23,13 +23,11 @@ export default function Trabajador_Index() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
-  // Abrir modal de confirmación
   const confirmDelete = (item) => {
     setItemToDelete(item);
     setDeleteModalOpen(true);
   };
 
-  // Eliminar registro
   const handleDelete = async () => {
     if (!itemToDelete) return;
     try {
@@ -44,7 +42,6 @@ export default function Trabajador_Index() {
     }
   };
 
-  // Cargar registros
   useEffect(() => {
     const fetchTrabajadores = async () => {
       try {
@@ -60,19 +57,16 @@ export default function Trabajador_Index() {
     fetchTrabajadores();
   }, []);
 
-  // Abrir modal de edición
   const handleEdit = (item) => {
     setEditingItem(item);
     openModal();
   };
 
-  // Abrir modal de detalle
   const handleSelectedItem = (item) => {
     setEditingItem(item);
     openModalTrabajador();
   };
 
-  // Actualizar lista luego de guardar/editar
   const handleTrabajadoresUpdated = (newItem) => {
     setTrabajadores((prev) => {
       if (newItem.isUpdated && newItem.id) {
@@ -85,22 +79,21 @@ export default function Trabajador_Index() {
     setEditingItem(null);
   };
 
-  // Cerrar modal
   const handleCloseModal = () => {
     closeModal();
     setEditingItem(null);
   };
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 p-4 sm:p-6">
+    <div className="w-full min-h-screen bg-gray-100 p-4 sm:p-6">
       <div className="w-full max-w-full mx-auto flex flex-col gap-4">
-        {/* Encabezado */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3 text-white">
+        {/* Encabezado formal */}
+        <div className="bg-white rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-gray-300">
+          <div className="flex items-center gap-3 text-gray-800">
             <FileText className="h-7 w-7" />
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold">Trabajadores</h1>
-              <p className="text-blue-100 text-sm sm:text-base">
+              <h1 className="text-xl sm:text-2xl font-semibold">Trabajadores</h1>
+              <p className="text-gray-600 text-sm sm:text-base">
                 Listado de trabajadores
               </p>
             </div>
@@ -111,17 +104,17 @@ export default function Trabajador_Index() {
               setEditingItem(null);
               openModal();
             }}
-            className="px-4 py-2.5 rounded-lg flex items-center gap-2 font-semibold transition-all shadow-md hover:shadow-lg bg-white text-blue-600 hover:bg-blue-50 self-start sm:self-auto"
+            className="px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all shadow-sm hover:shadow-md bg-gray-50 text-gray-800 hover:bg-gray-100 self-start sm:self-auto"
           >
             <Plus className="h-5 w-5" /> Nuevo registro
           </button>
         </div>
 
         {/* Tabla */}
-        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 overflow-x-auto">
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 overflow-x-auto border border-gray-200">
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-b-4 border-gray-300"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-gray-400 border-b-4 border-gray-300"></div>
             </div>
           ) : (
             <TableTrabajadores
@@ -166,7 +159,7 @@ export default function Trabajador_Index() {
       <DeleteConfirmModal
         open={deleteModalOpen}
         title="Eliminar registro"
-        message="¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer."
+        message="¿Está seguro de eliminar este registro? Esta acción no se puede deshacer."
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDelete}
       />

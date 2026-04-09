@@ -1,0 +1,1 @@
+from .detalleEstudio import DetalleEstudioSerializer
