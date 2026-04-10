@@ -2,7 +2,11 @@
 import os
 import json
 from aplication.services.supabase_client import supabase, BUCKET_COOKIES, fernet
+import logging
 
+
+# Logger
+logger = logging.getLogger(__name__)
 COOKIES_BUCKET = BUCKET_COOKIES
 
 def save_cookies(cookies, filename="cookies.json"):
@@ -28,14 +32,15 @@ def save_cookies(cookies, filename="cookies.json"):
                 "upsert": "true"
             }
         )
-        print(f"✅ Cookies cifradas guardadas en Supabase: {filename}")
+        
+        logger.info(f"✅ Cookies cifradas guardadas en Supabase: {filename}")
         
         # devolver URL pública
         url = supabase.storage.from_(COOKIES_BUCKET).get_public_url(filename)
         return url
 
     except Exception as e:
-        print(f"❌ Error guardando cookies: {e}")
+        logger.error(f"❌ Error guardando cookies: {e}")
         return None
 
 
@@ -49,15 +54,15 @@ def get_cookies(filename="cookies.json"):
         # descargar contenido
         resp = supabase.storage.from_(COOKIES_BUCKET).download(filename)
         if resp is None:
-            print(f"⚠️ Cookies no encontradas: {filename}")
+            logger.warning(f"⚠️ Cookies no encontradas: {filename}")
             return None
 
         # desencriptar
         data_bytes = fernet.decrypt(resp)
         cookies = json.loads(data_bytes)
-        print(f"✅ Cookies cargadas y desencriptadas: {filename}")
+        logger.info(f"✅ Cookies cargadas y desencriptadas: {filename}")
         return cookies
 
     except Exception as e:
-        print(f"❌ Error leyendo/desencriptando cookies: {e}")
+        logger.error(f"❌ Error leyendo/desencriptando cookies: {e}")
         return None

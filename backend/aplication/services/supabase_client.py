@@ -3,6 +3,11 @@ import os
 from supabase import create_client
 from django.conf import settings
 from cryptography.fernet import Fernet
+import logging
+
+# Logger
+logger = logging.getLogger(__name__)
+
 
 SUPABASE_URL = getattr(settings, "SUPABASE_URL")
 SUPABASE_KEY = getattr(settings, "SUPABASE_KEY")
@@ -12,11 +17,11 @@ if not SUPABASE_URL or not SUPABASE_KEY:
     raise Exception("⚠️ SUPABASE_URL o SUPABASE_KEY no están configuradas en settings.py")
 
 # Clave secreta para cifrar cookies
-SECRET_KEY = os.environ.get("COOKIE_SECRET_KEY")  # debe generarse con Fernet.generate_key()
-if not SECRET_KEY:
+COOKIE_SECRET_KEY = os.environ.get("COOKIE_SECRET_KEY")  # debe generarse con Fernet.generate_key()
+if not COOKIE_SECRET_KEY:
     raise Exception("❌ COOKIE_SECRET_KEY no configurada en variables de entorno")
 
-fernet = Fernet(SECRET_KEY.encode())
+fernet = Fernet(COOKIE_SECRET_KEY.encode())
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
@@ -50,10 +55,10 @@ def upload_to_supabase(file_path, custom_filename=None, bucket_name=BUCKET_PDFS,
                 "upsert": "true"
             }
         )
-        print(f"✅ Archivo subido: {filename} en bucket {bucket_name}")
+        logger.info(f"✅ Archivo subido: {filename} en bucket {bucket_name}")
         
     except Exception as e:
-        print(f"❌ Error subiendo archivo: {e}")
+        logger.error(f"❌ Error subiendo archivo: {e}")
         raise Exception(f"Error subiendo archivo a Supabase: {e}")
 
     # Obtener URL pública

@@ -11,6 +11,11 @@ from yarl import URL
 from datetime import timedelta
 from datetime import datetime
 from aplication.utils.haversine_km import haversine_km
+import logging
+
+
+# Logger
+logger = logging.getLogger(__name__)
 
 # Constantes de URLs y cookies
 MS_HOME_URL  = "https://websat.marimsys.cl/Home/Inicio?Tecnologia=VMS"
@@ -24,7 +29,7 @@ CL_COOKIES = "cl_cookies.json"
 # Marimsys
 # ──────────────────────────────
 async def obtener_posiciones_marimsys(cookies, retry=True): 
-    print(f"DEBUG: [Marimsys] Iniciando función con {len(cookies) if cookies else 0} cookies")
+    logger.info(f"DEBUG: [Marimsys] Iniciando función con {len(cookies) if cookies else 0} cookies")
     if not cookies:
         return []
     
@@ -36,13 +41,13 @@ async def obtener_posiciones_marimsys(cookies, retry=True):
             # Ahora pasamos el objeto URL, no el string
             jar.update_cookies({c["name"]: c["value"]}, response_url=target_url)
         except Exception as e:
-            print(f"⚠️ Error al inyectar cookie {c.get('name')}: {e}")
+            logger.warning(f"⚠️ Error al inyectar cookie {c.get('name')}: {e}")
         
     timeout = aiohttp.ClientTimeout(total=20)
-    print("DEBUG: [Marimsys] Jar preparado. Intentando abrir sesión...")
+    logger.info("DEBUG: [Marimsys] Jar preparado. Intentando abrir sesión...")
     
     # Verificamos si el Jar realmente tiene las cookies cargadas
-    print(f"DEBUG: [Marimsys] Cookies en el Jar: {[ck.key for ck in jar]}")
+    logger.info(f"DEBUG: [Marimsys] Cookies en el Jar: {[ck.key for ck in jar]}")
 
     headers = { 
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -62,19 +67,19 @@ async def obtener_posiciones_marimsys(cookies, retry=True):
     
     async with aiohttp.ClientSession(cookie_jar=jar, headers=headers) as session:
         try:
-            print(f"📡 [Marimsys] Enviando POST a {MS_API_URL}...")
+            logger.info(f"📡 [Marimsys] Enviando POST a {MS_API_URL}...")
             async with session.post(MS_API_URL, json=payload, timeout=15) as resp:
                 text = await resp.text()
                 status = resp.status
                 
-                print(f"📊 [Marimsys] Status Code: {status}")
-                print(f"📄 [Marimsys] Primeros 200 caracteres de respuesta: {text[:200]}")
+                logger.info(f"📊 [Marimsys] Status Code: {status}")
+                logger.info(f"📄 [Marimsys] Primeros 200 caracteres de respuesta: {text[:200]}")
 
                 # Caso 1: Sesión expirada o redirección al login
                 if status != 200 or "login" in text.lower() or "autentificacion" in text.lower():
-                    print("⚠️ [Marimsys] Sesión inválida detectada (HTML de login recibido).")
+                    logger.warning("⚠️ [Marimsys] Sesión inválida detectada (HTML de login recibido).")
                     if retry:
-                        print("🔄 [Marimsys] Borrando cookies locales e intentando relogin...")
+                        logger.info("🔄 [Marimsys] Borrando cookies locales e intentando relogin...")
                         if os.path.exists(MS_COOKIES): os.remove(MS_COOKIES)
                         new_cookies = await login_marimsys() 
                         return await obtener_posiciones_marimsys(new_cookies, retry=False) 
@@ -82,23 +87,20 @@ async def obtener_posiciones_marimsys(cookies, retry=True):
 
                 # Caso 2: Respuesta vacía pero válida
                 if not text.strip():
-                    print("⚠️ [Marimsys] El servidor respondió con un texto vacío.")
+                    logger.warning("⚠️ [Marimsys] El servidor respondió con un texto vacío.")
                     return []
 
                 try:
                     data = json.loads(text)
-                    print(f"✅ [Marimsys] JSON cargado. Elementos recibidos: {len(data) if isinstance(data, list) else 'No es lista'}")
+                    logger.info(f"✅ [Marimsys] JSON cargado. Elementos recibidos: {len(data) if isinstance(data, list) else 'No es lista'}")
                 except json.JSONDecodeError:
-                    print("❌ [Marimsys] Error crítico: La respuesta no es un JSON válido.")
+                    logger.error("❌ [Marimsys] Error crítico: La respuesta no es un JSON válido.")
                     return []
 
                 # Procesamiento (Parsing)
                 resultado = []
-                for b in data:
-                    # Print para ver si hay barcos que no están en estado "Activado"
+                for b in data:                    
                     if b.get("estado") != "Activado":
-                        # Descomenta esto si quieres ver barcos inactivos
-                        # print(f"ℹ️ [Marimsys] Saltando {b.get('nombre')} por estado: {b.get('estado')}")
                         continue
 
                     lat_lng = b.get("latLng", [None, None])
@@ -118,11 +120,11 @@ async def obtener_posiciones_marimsys(cookies, retry=True):
                         "fuente": "Marimsys" 
                     })
                 
-                print(f"🏁 [Marimsys] Procesamiento finalizado. Barcos válidos: {len(resultado)}")
+                logger.info(f"🏁 [Marimsys] Procesamiento finalizado. Barcos válidos: {len(resultado)}")
                 return resultado
 
         except Exception as e:
-            print(f"❌ [Marimsys] Excepción durante la petición: {type(e).__name__}: {e}")
+            logger.error(f"❌ [Marimsys] Excepción durante la petición: {type(e).__name__}: {e}")
             return []
 
 
@@ -142,7 +144,7 @@ async def obtener_reporte_horas_marimsys(id_movil=None, fecha_inicio=None, fecha
         end_date = datetime.strptime(fecha_fin, "%Y-%m-%d")
         end_date = end_date.replace(hour=23, minute=59, second=59)
 
-        print(f"📅 Marimsys desde {start_date} hasta {end_date}")
+        logger.info(f"📅 Marimsys desde {start_date} hasta {end_date}")
 
         # 🔥 Formato requerido por Marimsys
         fecha_desde = start_date.strftime("%d/%m/%Y %H:%M")
@@ -161,12 +163,12 @@ async def obtener_reporte_horas_marimsys(id_movil=None, fecha_inicio=None, fecha
         async with aiohttp.ClientSession(cookie_jar=jar) as session:
             async with session.get(url, params=params) as resp:
                 if resp.status != 200:
-                    print(f"❌ Error HTTP {resp.status}")
+                    logger.error(f"❌ Error HTTP {resp.status}")
                     return {"success": False, "error": f"HTTP {resp.status}"}
 
                 data = await resp.json(content_type=None)
 
-        print(f"📡 Marimsys registros crudos: {len(data)}")
+        logger.info(f"📡 Marimsys registros crudos: {len(data)}")
 
         # 🔥 Normalizar al formato Cunlogan
         posiciones = []
@@ -196,7 +198,7 @@ async def obtener_reporte_horas_marimsys(id_movil=None, fecha_inicio=None, fecha
         # 🔥 Ordenar igual que Cunlogan
         posiciones.sort(key=lambda x: x.get("fecha_obj") or datetime.min)
 
-        print(f"📡 Marimsys limpio: {len(posiciones)} posiciones")
+        logger.info(f"📡 Marimsys limpio: {len(posiciones)} posiciones")
 
         # 🔥 Reutilizar tu lógica existente (clave 🔥)
         reporte = calcular_reporte_simplificado(
@@ -224,7 +226,7 @@ async def obtener_reporte_horas_marimsys(id_movil=None, fecha_inicio=None, fecha
         }
 
     except Exception as e:
-        print("❌ ERROR Marimsys:", str(e))
+        logger.error("❌ ERROR Marimsys:", str(e))
         import traceback
         traceback.print_exc()
         return {
@@ -251,14 +253,14 @@ async def fetch_chunk(session, semaphore, start, end, mobs):
         try:
             async with session.post(CL_API_URL, data=payload, timeout=aiohttp.ClientTimeout(total=30)) as r:
                 if r.status != 200:
-                    print(f"⚠️ HTTP {r.status} para {start} → {end}")
+                    logger.warning(f"⚠️ HTTP {r.status} para {start} → {end}")
                     return []
 
                 data = await r.json(content_type=None)
                 return data.get("location", [])
 
         except Exception as e:
-            print(f"❌ Error chunk {start}: {e}")
+            logger.error(f"❌ Error chunk {start}: {e}")
             return []
 
 
@@ -290,7 +292,7 @@ async def obtener_posiciones_cunlogan(cookies, mobs=None, start_date=None, end_d
     for chunk in resultados:
         data_total.extend(chunk)
 
-    print(f"📡 Total registros crudos: {len(data_total)}")
+    logger.info(f"📡 Total registros crudos: {len(data_total)}")
 
     resultado = []
 
@@ -346,12 +348,12 @@ async def obtener_posiciones_cunlogan(cookies, mobs=None, start_date=None, end_d
     # ordenar
     resultado.sort(key=lambda x: x.get("fecha_obj") or datetime.min)
 
-    print(f"📡 Cunlogan limpio: {len(resultado)} posiciones")
+    logger.info(f"📡 Cunlogan limpio: {len(resultado)} posiciones")
 
     # debug días reales
     fechas = [p["fecha_obj"] for p in resultado if p["fecha_obj"]]
     if fechas:
-        print("📅 Días reales:", sorted(set([f.date() for f in fechas])))
+        logger.info(f"📅 Días reales: {sorted(set([f.date() for f in fechas]))}")
 
     return resultado
 
@@ -374,18 +376,18 @@ async def obtener_reporte_simplificado(mobs=None, fecha_inicio=None, fecha_fin=N
         if fecha_inicio:
             start_date = datetime.strptime(fecha_inicio, "%Y-%m-%d")
             start_date = start_date.replace(hour=0, minute=0, second=0)
-            print(f"📅 Fecha inicio parseada: {start_date}")
+            logger.info(f"📅 Fecha inicio parseada: {start_date}")
         if fecha_fin:
             end_date = datetime.strptime(fecha_fin, "%Y-%m-%d")
             end_date = end_date.replace(hour=23, minute=59, second=59)
-            print(f"📅 Fecha fin parseada: {end_date}")
+            logger.info(f"📅 Fecha fin parseada: {end_date}")
         # Si no hay fechas, usar últimos 7 días
         if not start_date and not end_date:
             end_date = datetime.now()
             start_date = end_date - timedelta(days=7)
             start_date = start_date.replace(hour=0, minute=0, second=0)
-            print(f"📅 Usando últimos 7 días: {start_date} hasta {end_date}")
-        print(f"📅 Buscando desde {start_date} hasta {end_date}")
+            logger.info(f"📅 Usando últimos 7 días: {start_date} hasta {end_date}")
+        logger.info(f"📅 Buscando desde {start_date} hasta {end_date}")
         # Obtener posiciones
         posiciones = await obtener_posiciones_cunlogan(
             cookies=cookies,
@@ -393,7 +395,7 @@ async def obtener_reporte_simplificado(mobs=None, fecha_inicio=None, fecha_fin=N
             start_date=start_date,
             end_date=end_date
         )
-        print(f"📊 Total posiciones obtenidas: {len(posiciones)}")
+        logger.info(f"📊 Total posiciones obtenidas: {len(posiciones)}")
         # Calcular reporte simplificado
         reporte = calcular_reporte_simplificado(
             posiciones,
@@ -401,8 +403,8 @@ async def obtener_reporte_simplificado(mobs=None, fecha_inicio=None, fecha_fin=N
             fecha_inicio=start_date.date(),
             fecha_fin=end_date.date()
         )
-        print(f"📊 Días con navegación en reporte: {len(reporte.get('dias', []))}")
-        print(f"⏱️ Total minutos navegados: {reporte.get('minutos_navegacion', 0)} ({reporte.get('horas_navegacion', 0)} horas)")
+        logger.info(f"📊 Días con navegación en reporte: {len(reporte.get('dias', []))}")
+        logger.info(f"⏱️ Total minutos navegados: {reporte.get('minutos_navegacion', 0)} ({reporte.get('horas_navegacion', 0)} horas)")
         # Agregar metadatos
         reporte["periodo"] = {
             "inicio": start_date.strftime("%Y-%m-%d"),
@@ -419,7 +421,7 @@ async def obtener_reporte_simplificado(mobs=None, fecha_inicio=None, fecha_fin=N
             "data": reporte
         }
     except Exception as e:
-        print("❌ ERROR en reporte simplificado:", str(e))
+        logger.error("❌ ERROR en reporte simplificado:", str(e))
         import traceback
         traceback.print_exc()
         return {

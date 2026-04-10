@@ -228,8 +228,40 @@ CONTENT_SECURITY_POLICY = {
 # ------------------------------------------------------------------------------
 # ENV
 # ------------------------------------------------------------------------------
+
+LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+        },
+
+        # 👇 ESTO ES LO QUE TE FALTA
+        'root': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+
+        'loggers': {
+            'auth_audit': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+            'rest_framework_simplejwt': {
+                'handlers': ['console'],
+                'level': 'DEBUG',
+                'propagate': False,
+            },
+        },
+    }
+
+
 if DEBUG:
-    print("🚀 Running in DEVELOPMENT mode")
+    print("🚀 MODO DESARROLLO")
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
@@ -243,36 +275,24 @@ if DEBUG:
     SECURE_SSL_REDIRECT = False
     
     # Logging para debug
-    LOGGING = {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'handlers': {
-            'console': {
-                'class': 'logging.StreamHandler',
-            },
-        },
-        'loggers': {
-            'auth_audit': {
-                'handlers': ['console'],
-                'level': 'INFO',
-            },
-            'rest_framework_simplejwt': {
-                'handlers': ['console'],
-                'level': 'DEBUG',
-            },
-        },
-    }
+    
 else:
-    print("🔒 Running in PRODUCTION mode")
+    print("🔒 MODO PRODUCCIÓN")
     CORS_ALLOWED_ORIGINS = ["https://altqll.vercel.app"]
-    # CSP debe permitir conexiones al backend de producción
-    PRODUCTION_BACKEND_URL = config('PRODUCTION_BACKEND_URL', default='https://altqll-backend.onrender.com/')
+    CORS_ALLOWED_ORIGINS = ["https://altqll.vercel.app"]
+    CORS_ALLOW_CREDENTIALS = True
+
     CONTENT_SECURITY_POLICY["DIRECTIVES"]["connect-src"] = [
         "'self'", 
-        PRODUCTION_BACKEND_URL
+        "https://altqll-backend.onrender.com"
     ]
-    
+
+    CSRF_TRUSTED_ORIGINS = [
+        "https://altqll.vercel.app",
+    ]
+
     SECURE_SSL_REDIRECT = True
+    
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True

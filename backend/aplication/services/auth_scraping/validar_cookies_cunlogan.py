@@ -1,4 +1,10 @@
 import aiohttp
+import logging
+
+
+# Logger
+logger = logging.getLogger(__name__)
+
 
 async def validar_cookies_cunlogan(cookies, api_url):
     jar = aiohttp.CookieJar(unsafe=True)
@@ -19,11 +25,11 @@ async def validar_cookies_cunlogan(cookies, api_url):
 
                 # 🔴 detectar sesión inválida
                 if not text or "login" in text.lower() or "html" in text.lower():
-                    print("❌ Cookies inválidas (redirige a login)")
+                    logger.error("❌ Cookies inválidas (redirige a login)")
                     return False
-                print("✅ Cookies válidas")
+                logger.info("✅ Cookies válidas")
                 return True
 
     except Exception as e:
-        print("❌ Error validando cookies:", e)
+        logger.error(f"❌ Error validando cookies: {e}")
         return False

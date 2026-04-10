@@ -3,6 +3,11 @@ from aplication.services.session.cookie_manager import save_cookies, get_cookies
 from aplication.services.auth_scraping.validar_cookies_cunlogan import validar_cookies_cunlogan
 import random
 
+import logging
+
+
+# Logger
+logger = logging.getLogger(__name__)
 
 LOGIN_URL = "https://www.cunlogantrack.net/index.php"
 CL_API_URL   = "https://www.cunlogantrack.net/controller/location.php"
@@ -24,20 +29,30 @@ async def login_cunlogan(force_login=False):
     if not force_login:
         cookies = get_cookies(CL_COOKIES)
         if cookies:
-            print("🔍 Validando cookies Cunlogan...")
+            logger.info("🔍 Validando cookies Cunlogan...")
             is_valid = await validar_cookies_cunlogan(cookies, CL_API_URL)
             if is_valid:
-                print("✅ Cookies vigentes")
+                logger.info("✅ Cookies vigentes")
                 return cookies
             else:
-                print("⚠️ Cookies expiradas, se hará login")
+                logger.warning("⚠️ Cookies expiradas, se hará login")
 
-    print("🌐 Iniciando login Cunlogan...")
+    logger.info("🌐 Iniciando login Cunlogan...")
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(user_agent=get_random_ua())
+        browser = await p.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+            ]
+        )
+        context = await browser.new_context(
+            user_agent=await get_random_ua(),
+            viewport={"width": 1366, "height": 768},
+            locale="es-CL",
+        )
         page = await context.new_page()
-
         await page.goto(LOGIN_URL)
         await page.fill('input[name="user_temp"]', USER)
         await page.fill('input[name="pass_temp"]', PASS)
@@ -50,5 +65,5 @@ async def login_cunlogan(force_login=False):
         cookies = await context.cookies()
         save_cookies(cookies, CL_COOKIES)
         await browser.close()
-        print("✅ Login Cunlogan OK")
+        logger.info("✅ Login Cunlogan OK")
         return cookies
