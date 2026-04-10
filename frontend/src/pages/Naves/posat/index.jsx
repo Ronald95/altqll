@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import WindyMap from "./WindyFleetMap";
+import PosatAPI from "../../../api/posat";
 
 // ── 1. Helper: mover la cámara ──
 function ChangeView({ center, zoom }) {
@@ -241,11 +241,10 @@ export default function App() {
 
   const fetchPosiciones = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/posiciones_flota/");
-      const data = await res.json();
-      if (data.success) {
+      const res = await PosatAPI.getPosat();
+      if (res.success) {
         // Ordenar por fecha más reciente
-        const sorted = [...data.data].sort((a, b) => {
+        const sorted = [...res.data].sort((a, b) => {
           const dateA = new Date(a.fecha_hora.split("/").reverse().join("-"));
           const dateB = new Date(b.fecha_hora.split("/").reverse().join("-"));
           return dateB - dateA;

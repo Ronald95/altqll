@@ -470,7 +470,7 @@ async def reporte_marimsys_simplificado_view(request):
                     }, status=400)
 
         # 3. Cargar cookies de Marimsys (Desde Supabase o Login)
-        cookies = await cargar_cookies_marimsys()
+        
 
         # 4. Obtener reporte usando la lógica asíncrona robusta
         # Esta función ya maneja internamente el relogin y el parsing de Marimsys

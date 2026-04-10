@@ -6,9 +6,9 @@ const PosatAPI = {
   // ─────────────────────────────
   // POSICIONES ACTUALES
   // ─────────────────────────────
-  async getPosiciones() {
+  async getPosat() {
     try {
-      const response = await apiClient.get("/api/cunlogan/posiciones/");
+      const response = await apiClient.get("/api/posat_naves/");
       return response.data;
     } catch (error) {
       console.error("❌ Error obteniendo posiciones:", error);
@@ -49,10 +49,9 @@ const PosatAPI = {
     }
 
     const dias = data.data.dias;
-
+    const estadistica = data.data.estadistica || null;
     // 🔥 flatten
     let puntos = [];
-
     dias.forEach((dia) => {
       dia.reportes.forEach((r) => {
         puntos.push({
@@ -65,6 +64,7 @@ const PosatAPI = {
     });
 
     return {
+      estadistica,
       meta: {
         total_posiciones: data.data.total_posiciones,
         minutos_navegacion: data.data.minutos_navegacion,

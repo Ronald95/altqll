@@ -268,96 +268,142 @@ async def fetch_chunk(session, semaphore, start, end, mobs):
 # ──────────────────────────────
 # Cunlogan
 # ──────────────────────────────
-async def obtener_posiciones_cunlogan(cookies, mobs=None, start_date=None, end_date=None):
+async def obtener_posiciones_cunlogan(cookies, retry=True):
     jar = aiohttp.CookieJar(unsafe=True)
-    for c in cookies:
-        jar.update_cookies({c["name"]: c["value"]})
+    if cookies:
+        for c in cookies:
+            jar.update_cookies({c["name"]: c["value"]})
 
-    semaphore = asyncio.Semaphore(3)
+    payload = {"action": "tabladatos", "search": "simple", "period": "0"}
 
     async with aiohttp.ClientSession(cookie_jar=jar) as session:
-        tareas = []
-        current = start_date
+        async with session.post(CL_API_URL, data=payload) as resp:
+            text = await resp.text()
+            if not text or "login" in text.lower() or "html" in text.lower():
+                if retry:
+                    if os.path.exists(CL_COOKIES):
+                        os.remove(CL_COOKIES)
+                    new_cookies = await login_cunlogan()
+                    return await obtener_posiciones_cunlogan(new_cookies, retry=False)
+                else:
+                    return []
+            try:
+                data = json.loads(text)
+            except:
+                return []
 
-        # 🔥 dividir en bloques de 6 horas
-        while current < end_date:
-            chunk_end = min(current + timedelta(hours=6), end_date)
-            tareas.append(fetch_chunk(session, semaphore, current, chunk_end, mobs))
-            current = chunk_end
+    if not data or "location" not in data:
+        return []
 
-        resultados = await asyncio.gather(*tareas)
-
-    # 🔥 unir resultados
-    data_total = []
-    for chunk in resultados:
-        data_total.extend(chunk)
-
-    logger.info(f"📡 Total registros crudos: {len(data_total)}")
-
+    excluir_ids = {"3549", "6710", "3097"}
     resultado = []
 
-    for b in data_total:
+    for b in data.get("location", []):
+        if not b:
+            continue
+        id_movil = str(b.get("id_movil"))
+        if id_movil in excluir_ids:
+            continue
         lat = dms_to_decimal(b.get("latitude", ""))
         lon = dms_to_decimal(b.get("longitude", ""))
-
-        # velocidad
-        speed_str = str(b.get("speed", "0")).replace("kt", "").strip()
         try:
-            speed = float(speed_str)
+            speed = float(str(b.get("speed", "0")).replace("kt", "").strip())
         except:
-            speed = 0.0
-
-        # 🔥 parse robusto
-        loc_date_str = b.get("loc_date", "")
-        loc_date = None
-
-        for fmt in [
-            "%d/%m/%Y %H:%M:%S",
-            "%d/%m/%Y %H:%M",
-            "%Y-%m-%d %H:%M:%S",
-            "%Y-%m-%dT%H:%M:%S",
-        ]:
-            try:
-                loc_date = datetime.strptime(loc_date_str, fmt)
-                break
-            except:
-                continue
-
+            speed = 0
+        try:
+            rumbo = float(b.get("heading", 0))
+        except:
+            rumbo = 0
         resultado.append({
-            "id": b.get("id"),
-            "id_movil": b.get("id_movil"),
+            "id": id_movil,
             "nombre": b.get("name"),
             "lat": lat,
             "lon": lon,
             "velocidad": speed,
-            "rumbo": float(b.get("heading", 0)),
-            "fecha_hora": loc_date_str,
-            "fecha_obj": loc_date,
-            "puerto": b.get("port"),
+            "rumbo": rumbo,
+            "fecha_hora": b.get("loc_date"),
+            "puerto": b.get("port", ""),
             "delay_horas": float(b.get("location_hours_delay", 0)),
+            "fuente": "Cunlogan"
         })
-
-    # 🔥 eliminar duplicados (muy importante)
-    resultado_unico = {}
-    for r in resultado:
-        key = (r["lat"], r["lon"], r["fecha_hora"])
-        resultado_unico[key] = r
-
-    resultado = list(resultado_unico.values())
-
-    # ordenar
-    resultado.sort(key=lambda x: x.get("fecha_obj") or datetime.min)
-
-    logger.info(f"📡 Cunlogan limpio: {len(resultado)} posiciones")
-
-    # debug días reales
-    fechas = [p["fecha_obj"] for p in resultado if p["fecha_obj"]]
-    if fechas:
-        logger.info(f"📅 Días reales: {sorted(set([f.date() for f in fechas]))}")
-
     return resultado
 
+
+
 async def obtener_reporte_simplificado(mobs=None, fecha_inicio=None, fecha_fin=None):
+    """
+    Obtiene reporte simplificado de navegación
+    Args:
+        mobs: ID del móvil/embarcación (opcional)
+        fecha_inicio: Fecha inicio (string "YYYY-MM-DD")
+        fecha_fin: Fecha fin (string "YYYY-MM-DD")
+    Returns:
+        Diccionario con reporte simplificado
+    """
+    try:
+        # Login y obtener cookies
+        cookies = await login_cunlogan()
+        # Parsear fechas
+        start_date = None
+        end_date = None
+        if fecha_inicio:
+            start_date = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+            start_date = start_date.replace(hour=0, minute=0, second=0)
+            print(f"📅 Fecha inicio parseada: {start_date}")
+        if fecha_fin:
+            end_date = datetime.strptime(fecha_fin, "%Y-%m-%d")
+            end_date = end_date.replace(hour=23, minute=59, second=59)
+            print(f"📅 Fecha fin parseada: {end_date}")
+        # Si no hay fechas, usar últimos 7 días
+        if not start_date and not end_date:
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=7)
+            start_date = start_date.replace(hour=0, minute=0, second=0)
+            print(f"📅 Usando últimos 7 días: {start_date} hasta {end_date}")
+        print(f"📅 Buscando desde {start_date} hasta {end_date}")
+        # Obtener posiciones
+        posiciones = await obtener_posiciones_cunlogan(
+            cookies=cookies,
+            mobs=mobs,
+            start_date=start_date,
+            end_date=end_date
+        )
+        print(f"📊 Total posiciones obtenidas: {len(posiciones)}")
+        # Calcular reporte simplificado
+        reporte = calcular_reporte_simplificado(
+            posiciones,
+            velocidad_minima=1.0,
+            fecha_inicio=start_date.date(),
+            fecha_fin=end_date.date()
+        )
+        print(f"📊 Días con navegación en reporte: {len(reporte.get('dias', []))}")
+        print(f"⏱️ Total minutos navegados: {reporte.get('minutos_navegacion', 0)} ({reporte.get('horas_navegacion', 0)} horas)")
+        # Agregar metadatos
+        reporte["periodo"] = {
+            "inicio": start_date.strftime("%Y-%m-%d"),
+            "fin": end_date.strftime("%Y-%m-%d"),
+            "dias_totales": (end_date - start_date).days + 1
+        }
+        if mobs:
+            reporte["id_movil"] = mobs
+        # Obtener nombre de la embarcación si hay posiciones
+        if posiciones:
+            reporte["nombre_embarcacion"] = posiciones[0].get("nombre")
+        return {
+            "success": True,
+            "data": reporte
+        }
+    except Exception as e:
+        print("❌ ERROR en reporte simplificado:", str(e))
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+        
+async def obtener_reporte_horas_cunlogan(mobs=None, fecha_inicio=None, fecha_fin=None):
     """
     Obtiene reporte simplificado de navegación
     Args:
@@ -592,11 +638,13 @@ def calcular_reporte_simplificado(posiciones, velocidad_minima=1.0, fecha_inicio
     millas_recorridas_total = round(distancia_total_km * 0.539957, 2)  # km a millas náuticas
 
     return {
+    "estadistica": {
         "total_posiciones": len(posiciones),
         "posiciones_navegando": sum(len(r["reportes"]) for r in dias),
-        "minutos_navegacion": round(total_navegacion_minutos, 2),  # 🔥 nuevo campo global
-        "horas_navegacion": round(total_navegacion_minutos / 60, 2),  # 🔥 adicional
-        "distancia_km": round(distancia_total_km, 2),  # 🔥 nuevo
-        "millas_recorridas": millas_recorridas_total,  # 🔥 nuevo
-        "dias": dias
-    }
+        "minutos_navegacion": round(total_navegacion_minutos, 2),
+        "horas_navegacion": round(total_navegacion_minutos / 60, 2),
+        "distancia_km": round(distancia_total_km, 2),
+        "millas_recorridas": millas_recorridas_total,
+    },
+    "dias": dias
+}

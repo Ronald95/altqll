@@ -6,10 +6,16 @@ import {
   Tooltip,
   Polyline,
   Popup,
+  useMap,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import PosatAPI from "../../../api/posat";
+import "react-datepicker/dist/react-datepicker.css";
+import DatePicker, { registerLocale } from "react-datepicker";
+import es from "date-fns/locale/es";
+
+registerLocale("es", es);
 
 // 🎨 CONSTANTES
 const NAVES = [
@@ -29,129 +35,62 @@ const VELOCIDAD_COLORS = {
   rapido: { min: 9.1, max: Infinity, color: "#a855f7", label: "Rápido" },
 };
 
-// 🎯 ICONOS MEJORADOS
+// 🎯 ICONOS
 const createDotIcon = (velocidad) => {
   const vel = velocidad || 0;
   let color = VELOCIDAD_COLORS.detenido.color;
   let size = 10;
-  
-  if (vel > 0 && vel <= 5) {
-    color = VELOCIDAD_COLORS.lento.color;
-    size = 12;
-  } else if (vel > 5 && vel <= 9) {
-    color = VELOCIDAD_COLORS.medio.color;
-    size = 14;
-  } else if (vel > 9) {
-    color = VELOCIDAD_COLORS.rapido.color;
-    size = 16;
-  }
+
+  if (vel > 0 && vel <= 5) { color = VELOCIDAD_COLORS.lento.color; size = 12; }
+  else if (vel > 5 && vel <= 9) { color = VELOCIDAD_COLORS.medio.color; size = 12; }
+  else if (vel > 9) { color = VELOCIDAD_COLORS.rapido.color; size = 12; }
 
   return L.divIcon({
-    html: `<div style="
-      width:${size}px;
-      height:${size}px;
-      border-radius:50%;
-      background:${color};
-      border:3px solid white;
-      box-shadow:0 2px 4px rgba(0,0,0,0.2);
-      transition:all 0.2s ease;
-      cursor:pointer;
-    "></div>`,
+    html: `<div style="width:${size}px; height:${size}px; background:${color};" 
+               class="rounded-full border-2 border-white shadow-sm hover:scale-150 transition-all duration-200 cursor-pointer"></div>`,
     className: "custom-dot-icon",
     iconSize: [size, size],
-    iconAnchor: [size/2, size/2],
+    iconAnchor: [size / 2, size / 2],
   });
 };
 
-const createBoatIcon = (heading, color) => {
+const createBoatIcon = (heading) => {
   return L.divIcon({
-    html: `<div style="
-      transform: rotate(${heading}deg);
-      font-size:32px;
-      filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
-      transition:transform 0.1s linear;
-      cursor:pointer;
-    ">⛵</div>`,
+    html: `<div style="transform: rotate(${heading}deg);" 
+               class="text-3xl drop-shadow-lg transition-transform duration-100 cursor-default">⛵</div>`,
     className: "custom-boat-icon",
     iconSize: [32, 32],
     iconAnchor: [16, 16],
   });
 };
 
-// 🧮 FUNCIONES UTILITARIAS
-const interpolate = (p1, p2, t) => ({
-  lat: p1.lat + (p2.lat - p1.lat) * t,
-  lng: p1.lon + (p2.lon - p1.lon) * t,
-});
-
-
-
-const formatHora = (hora) => {
-  if (!hora) return "";
-  return new Date(hora).toLocaleTimeString("es-CL", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+const CenterOnFirstPoint = ({ puntos }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (puntos?.length > 0) {
+      map.setView([puntos[0].lat, puntos[0].lon], 12, { animate: true });
+    }
+  }, [puntos, map]);
+  return null;
 };
 
-const formatDistancia = (km) => {
-  if (!km) return "0";
-  return km.toFixed(1);
-};
-
-// 📊 COMPONENTE DE ESTADÍSTICAS
-const Estadisticas = ({ reportes, horaActual, velocidadSim, playing }) => {
-  const stats = useMemo(() => {
-    if (!reportes.length) return null;
-    
-    const velocidades = reportes.map(r => r.velocidad || 0);
-    const maxVel = Math.max(...velocidades);
-    const avgVel = (velocidades.reduce((a,b) => a+b, 0) / velocidades.length).toFixed(1);
-    const distanciaTotal = reportes.reduce((sum, r) => sum + (r.distancia_km || 0), 0);
-    
-    return { maxVel, avgVel, distanciaTotal };
-  }, [reportes]);
-
-  if (!stats) return null;
-
-  return (
-    <div className="stats-panel">
-      <div className="stat-item">
-        <span className="stat-label">⚡ Velocidad</span>
-        <span className="stat-value">{stats.avgVel} kn</span>
-        <span className="stat-sub">máx {stats.maxVel} kn</span>
-      </div>
-      <div className="stat-item">
-        <span className="stat-label">📏 Distancia</span>
-        <span className="stat-value">{formatDistancia(stats.distanciaTotal)} km</span>
-      </div>
-      {horaActual && (
-        <div className="stat-item">
-          <span className="stat-label">🕒 Hora</span>
-          <span className="stat-value">{formatHora(horaActual)}</span>
-        </div>
-      )}
-      {playing && (
-        <div className="stat-item">
-          <span className="stat-label">▶️ Vel. Sim</span>
-          <span className="stat-value">{velocidadSim}x</span>
-        </div>
-      )}
+const StatItem = ({ icon, label, value, subValue }) => (
+  <div className="flex items-center gap-3 py-3 border-b border-slate-100 last:border-0">
+    <div className="text-xl w-8 h-8 flex items-center justify-center bg-slate-50 rounded-lg">{icon}</div>
+    <div className="flex flex-col">
+      <span className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">{label}</span>
+      <span className="text-base font-bold text-slate-800 leading-tight">{value}</span>
+      {subValue && <span className="text-xs text-slate-400">{subValue}</span>}
     </div>
-  );
-};
+  </div>
+);
 
-// 🗺️ COMPONENTE PRINCIPAL
 export default function ReporteMapaFull() {
-  const [fechas, setFechas] = useState({
-    inicio: "",
-    fin: "",
-  });
+  const [rango, setRango] = useState([null, null]);
+  const [startDate, endDate] = rango;
   const [naveId, setNaveId] = useState(NAVES[0].id);
-  const [naveSeleccionada, setNaveSeleccionada] = useState(NAVES[0]);
-  
   const [reportes, setReportes] = useState([]);
+  const [estadisticas, setEstadisticas] = useState(null);
   const [rutaDibujada, setRutaDibujada] = useState([]);
   const [posAnimada, setPosAnimada] = useState(null);
   const [horaActual, setHoraActual] = useState(null);
@@ -160,78 +99,64 @@ export default function ReporteMapaFull() {
   const [scrubber, setScrubber] = useState(0);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
-  
+
   const indexRef = useRef(0);
   const frameRef = useRef(null);
   const startTimeRef = useRef(null);
 
-  // Actualizar nave seleccionada
-  useEffect(() => {
-    const nave = NAVES.find(n => n.id === naveId);
-    setNaveSeleccionada(nave);
-  }, [naveId]);
+  const naveSeleccionada = useMemo(() => NAVES.find(n => n.id === naveId), [naveId]);
 
   const buscar = useCallback(async () => {
-    if (!fechas.inicio || !fechas.fin) {
-      setError("Selecciona ambas fechas");
+    if (!startDate || !endDate) {
+      setError("Selecciona un rango de fechas");
       return;
     }
-
     setCargando(true);
     setError(null);
     setPlaying(false);
-    
+
     try {
       const res = await PosatAPI.getReportePlano({
         mobs: naveId,
-        fecha_inicio: fechas.inicio,
-        fecha_fin: fechas.fin,
+        fecha_inicio: startDate.toISOString().split("T")[0],
+        fecha_fin: endDate.toISOString().split("T")[0],
         source: "posat"
       });
 
       const validos = (res.puntos || []).filter(p => p.lat && p.lon);
-      
       if (validos.length === 0) {
-        setError("No se encontraron datos para este período");
+        setError("Sin datos para este período");
         setReportes([]);
         return;
       }
-      
+
       setReportes(validos);
-      setRutaDibujada([]);
+      setEstadisticas(res.estadistica);
       setPosAnimada([validos[0].lat, validos[0].lon]);
       setHoraActual(validos[0].hora);
       indexRef.current = 0;
-      startTimeRef.current = null;
       setScrubber(0);
-      
+      setRutaDibujada([]);
     } catch (err) {
-      console.error(err);
-      setError("Error cargando los datos");
+      setError("Error al cargar datos");
     } finally {
       setCargando(false);
     }
-  }, [naveId, fechas]);
+  }, [naveId, startDate, endDate]);
 
-  // Animación
   useEffect(() => {
     if (!playing || reportes.length < 2) return;
 
     const step = (timestamp) => {
       if (!startTimeRef.current) startTimeRef.current = timestamp;
-
       const i = indexRef.current;
-      if (i >= reportes.length - 1) {
-        setPlaying(false);
-        return;
-      }
+      if (i >= reportes.length - 1) { setPlaying(false); return; }
 
       const p1 = reportes[i];
       const p2 = reportes[i + 1];
-      const duracionRealMs = (p2.minutos_navegados || 1) * 60 * 1000;
-      const duracionAnimacion = duracionRealMs / velocidadSim;
+      const duracionAnimacion = ((p2.minutos_navegados || 1) * 60 * 1000) / velocidadSim;
       const elapsed = timestamp - startTimeRef.current;
-      let t = Math.min(1, elapsed / duracionAnimacion);
+      const t = Math.min(1, elapsed / duracionAnimacion);
 
       if (t >= 1) {
         indexRef.current += 1;
@@ -241,472 +166,213 @@ export default function ReporteMapaFull() {
         setScrubber(indexRef.current);
         startTimeRef.current = timestamp;
       } else {
-        const pos = interpolate(p1, p2, t);
-        setPosAnimada([pos.lat, pos.lng]);
+        const lat = p1.lat + (p2.lat - p1.lat) * t;
+        const lon = p1.lon + (p2.lon - p1.lon) * t;
+        setPosAnimada([lat, lon]);
       }
-
       frameRef.current = requestAnimationFrame(step);
     };
 
     frameRef.current = requestAnimationFrame(step);
-    return () => {
-      if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    };
+    return () => cancelAnimationFrame(frameRef.current);
   }, [playing, reportes, velocidadSim]);
 
-  // Control manual del scrubber
-  const handleScrubber = useCallback((value) => {
-    setScrubber(value);
-    const punto = reportes[value];
-    if (punto) {
-      setPosAnimada([punto.lat, punto.lon]);
-      setHoraActual(punto.hora);
-      setRutaDibujada(reportes.slice(0, value + 1).map(p => [p.lat, p.lon]));
-      indexRef.current = value;
-      startTimeRef.current = null;
-      if (playing) setPlaying(false);
+  const handleScrubber = (value) => {
+    const val = parseInt(value);
+    setScrubber(val);
+    const p = reportes[val];
+    if (p) {
+      setPosAnimada([p.lat, p.lon]);
+      setHoraActual(p.hora);
+      setRutaDibujada(reportes.slice(0, val + 1).map(x => [x.lat, x.lon]));
+      indexRef.current = val;
+      setPlaying(false);
     }
-  }, [reportes, playing]);
+  };
 
-  // Segmentos coloreados por velocidad
-  const segmentosColoreados = useMemo(() => {
-    const segments = [];
-    for (let i = 0; i < reportes.length - 1; i++) {
-      const p1 = reportes[i];
-      const p2 = reportes[i + 1];
-      
-      let color = VELOCIDAD_COLORS.detenido.color;
-      if (p1.velocidad > 0 && p1.velocidad <= 5) color = VELOCIDAD_COLORS.lento.color;
-      else if (p1.velocidad > 5 && p1.velocidad <= 9) color = VELOCIDAD_COLORS.medio.color;
-      else if (p1.velocidad > 9) color = VELOCIDAD_COLORS.rapido.color;
-      
-      segments.push({
-        positions: [[p1.lat, p1.lon], [p2.lat, p2.lon]],
-        color,
-        velocidad: p1.velocidad,
-      });
-    }
-    return segments;
-  }, [reportes]);
-
-  const velocidadActual = useMemo(() => {
-    if (!reportes[indexRef.current]) return 0;
-    return reportes[indexRef.current].velocidad || 0;
-  }, [reportes, indexRef.current]);
-
-  const rumboActual = useMemo(() => {
-    if (!reportes[indexRef.current]) return 0;
-    return reportes[indexRef.current].rumbo || 0;
-  }, [reportes, indexRef.current]);
+  const currentData = reportes[indexRef.current] || { velocidad: 0, rumbo: 0 };
 
   return (
-    <div className="map-container">
-      {/* HEADER MODERNO */}
-      <div className="control-panel">
-        <div className="control-group">
-          <label>🚢 Nave</label>
-          <select 
-            value={naveId} 
-            onChange={(e) => setNaveId(Number(e.target.value))}
-            style={{ borderColor: naveSeleccionada?.color }}
-          >
-            {NAVES.map((n) => (
-              <option key={n.id} value={n.id}>{n.nombre}</option>
-            ))}
-          </select>
-        </div>
+    <div className="flex flex-col lg:flex-row h-screen w-full bg-slate-100 font-sans overflow-hidden">
+      
+      {/* SIDEBAR IZQUIERDO */}
+      <aside className="w-full lg:w-[360px] bg-white border-r border-slate-200 p-6 flex flex-col gap-6 overflow-y-auto shadow-xl z-20">
+        <section className="bg-slate-50 rounded-2xl p-5 border border-slate-100 shadow-sm">
+          <h2 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2">
+            <span className="text-blue-500">🔍</span> BUSCAR NAVEGACIÓN
+          </h2>
 
-        <div className="control-group">
-          <label>📅 Fecha inicio</label>
-          <input 
-            type="date" 
-            value={fechas.inicio} 
-            onChange={(e) => setFechas(prev => ({ ...prev, inicio: e.target.value }))}
-          />
-        </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 mb-1 tracking-widest">NAVE</label>
+              <select
+                value={naveId}
+                onChange={(e) => setNaveId(Number(e.target.value))}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                {NAVES.map(n => <option key={n.id} value={n.id}>{n.nombre}</option>)}
+              </select>
+            </div>
 
-        <div className="control-group">
-          <label>📅 Fecha fin</label>
-          <input 
-            type="date" 
-            value={fechas.fin} 
-            onChange={(e) => setFechas(prev => ({ ...prev, fin: e.target.value }))}
-          />
-        </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 mb-1 tracking-widest">RANGO DE FECHAS</label>
+              <DatePicker
+                selectsRange
+                startDate={startDate}
+                endDate={endDate}
+                onChange={(update) => setRango(update)}
+                locale="es"
+                dateFormat="dd/MM/yyyy"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholderText="Seleccione fechas..."
+              />
+            </div>
 
-        <button 
-          className="btn-primary"
-          onClick={buscar}
-          disabled={cargando}
-        >
-          {cargando ? "Buscando..." : "🔍 Buscar"}
-        </button>
-      </div>
-
-      {/* BARRA DE REPRODUCCIÓN */}
-      {reportes.length > 0 && (
-        <div className="playback-bar">
-          <button 
-            className={`play-btn ${playing ? 'pause' : 'play'}`}
-            onClick={() => setPlaying(!playing)}
-          >
-            {playing ? "⏸" : "▶"}
-          </button>
-          
-          <input
-            type="range"
-            min="0"
-            max={reportes.length - 1}
-            value={scrubber}
-            onChange={(e) => handleScrubber(parseInt(e.target.value))}
-            className="scrubber"
-          />
-          
-          <div className="speed-control">
-            <span>⚡</span>
-            <input
-              type="range"
-              min="1"
-              max="200"
-              value={velocidadSim}
-              onChange={(e) => setVelocidadSim(Number(e.target.value))}
-            />
-            <span>{velocidadSim}x</span>
+            <button
+              onClick={buscar}
+              disabled={cargando}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 flex justify-center items-center gap-2"
+            >
+              {cargando ? "Cargando..." : "Explorar Ruta"}
+            </button>
           </div>
-          
-          <div className="boat-info">
-            <span>⛵ {velocidadActual.toFixed(1)} kn</span>
-            <span>🧭 {rumboActual}°</span>
-          </div>
-        </div>
-      )}
+          {error && <div className="mt-3 text-xs bg-red-50 text-red-500 p-3 rounded-lg border border-red-100">⚠️ {error}</div>}
+        </section>
 
-      {/* ERROR */}
-      {error && (
-        <div className="error-message">
-          ⚠️ {error}
-        </div>
-      )}
-
-      {/* MAPA - CORREGIDO */}
-      <MapContainer 
-        center={[-43.2, -73.6]} 
-        zoom={10} 
-        className="leaflet-map"
-        style={{ background: "#e8f4f8" }} // Color de fondo mientras carga
-      >
-        {/* TILELAYER CORREGIDO - Usando OpenStreetMap estándar */}
-        <TileLayer 
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          className="map-tiles"
-        />
-
-        {/* Segmentos coloreados */}
-        {segmentosColoreados.map((s, i) => (
-          <Polyline 
-            key={i} 
-            positions={s.positions} 
-            color={s.color}
-            weight={4}
-            opacity={0.8}
-          />
-        ))}
-
-        {/* Ruta dibujada */}
-        {rutaDibujada.length > 0 && (
-          <Polyline 
-            positions={rutaDibujada} 
-            color={naveSeleccionada?.color || "#3b82f6"} 
-            weight={5}
-            opacity={0.9}
-          />
+        {estadisticas && (
+          <section className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+            <h3 className="text-sm font-black text-slate-800 mb-4 border-b pb-2">📊 RESUMEN DE VIAJE</h3>
+            <StatItem icon="📍" label="Total Posiciones" value={estadisticas.total_posiciones} />
+            <StatItem icon="⏱️" label="Tiempo Navegación" value={`${(estadisticas.horas_navegacion || 0).toFixed(1)} hrs`} />
+            <StatItem icon="📏" label="Distancia Total" value={`${(estadisticas.distancia_km || 0).toFixed(2)} km`} />
+          </section>
         )}
+      </aside>
 
-        {/* Barco animado */}
-        {posAnimada && indexRef.current < reportes.length && (
-          <Marker
-            position={posAnimada}
-            icon={createBoatIcon(rumboActual, naveSeleccionada?.color)}
-          >
-            <Tooltip permanent direction="top" offset={[0, -20]}>
-              <div className="boat-tooltip">
-                <strong>{naveSeleccionada?.nombre}</strong>
-                <div>⚡ {velocidadActual.toFixed(1)} kn</div>
-                <div>🕒 {formatHora(horaActual)}</div>
-              </div>
-            </Tooltip>
-          </Marker>
-        )}
-
-        {/* Puntos de reporte */}
-        {reportes.map((p, i) => (
-          <Marker 
-            key={i} 
-            position={[p.lat, p.lon]} 
-            icon={createDotIcon(p.velocidad)}
-          >
-            <Popup>
-              <div className="popup-content">
-                <h4>Reporte #{i + 1}</h4>
-                <div>🕒 {formatHora(p.hora)}</div>
-                <div>⚡ {p.velocidad?.toFixed(1) || 0} kn</div>
-                <div>🧭 {p.rumbo || 0}°</div>
-                <div>📏 {formatDistancia(p.distancia_km)} km</div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
-
-      {/* Panel de estadísticas flotante */}
-      {reportes.length > 0 && (
-        <Estadisticas 
-          reportes={reportes}
-          horaActual={horaActual}
-          velocidadSim={velocidadSim}
-          playing={playing}
-        />
-      )}
-
-      {/* ESTILOS */}
-      <style jsx>{`
-        .map-container {
-          height: 85vh;
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          background: #f8fafc;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        .control-panel {
-          background: white;
-          padding: 1rem;
-          display: flex;
-          gap: 1rem;
-          flex-wrap: wrap;
-          align-items: flex-end;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-          z-index: 1000;
-        }
-
-        .control-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .control-group label {
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: #64748b;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        select, input[type="date"] {
-          padding: 0.5rem 0.75rem;
-          border: 2px solid #e2e8f0;
-          border-radius: 8px;
-          font-size: 0.875rem;
-          background: white;
-          transition: all 0.2s;
-        }
-
-        select:focus, input:focus {
-          outline: none;
-          border-color: #3b82f6;
-        }
-
-        .btn-primary {
-          background: #3b82f6;
-          color: white;
-          border: none;
-          padding: 0.5rem 1.5rem;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-          height: 38px;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-          background: #2563eb;
-          transform: translateY(-1px);
-        }
-
-        .btn-primary:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .playback-bar {
-          background: white;
-          padding: 0.75rem 1rem;
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          border-bottom: 1px solid #e2e8f0;
-          z-index: 1000;
-        }
-
-        .play-btn {
-          width: 40px;
-          height: 40px;
-          border-radius: 20px;
-          border: none;
-          background: #3b82f6;
-          color: white;
-          font-size: 1rem;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s;
-        }
-
-        .play-btn:hover {
-          transform: scale(1.05);
-          background: #2563eb;
-        }
-
-        .scrubber {
-          flex: 1;
-          height: 4px;
-          border-radius: 2px;
-          background: #e2e8f0;
-          cursor: pointer;
-        }
-
-        .speed-control {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: #f1f5f9;
-          padding: 0.25rem 0.75rem;
-          border-radius: 20px;
-        }
-
-        .speed-control input {
-          width: 80px;
-        }
-
-        .boat-info {
-          display: flex;
-          gap: 1rem;
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: #1e293b;
-          background: #f1f5f9;
-          padding: 0.25rem 0.75rem;
-          border-radius: 20px;
-        }
-
-        .error-message {
-          position: absolute;
-          top: 80px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: #ef4444;
-          color: white;
-          padding: 0.75rem 1.5rem;
-          border-radius: 8px;
-          z-index: 2000;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          font-weight: 500;
-        }
-
-        .stats-panel {
-          position: absolute;
-          bottom: 20px;
-          right: 20px;
-          background: rgba(255,255,255,0.95);
-          backdrop-filter: blur(10px);
-          padding: 1rem;
-          border-radius: 12px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          z-index: 1000;
-          min-width: 180px;
-          border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        .stat-item {
-          padding: 0.5rem 0;
-          border-bottom: 1px solid #e2e8f0;
-        }
-
-        .stat-item:last-child {
-          border-bottom: none;
-        }
-
-        .stat-label {
-          font-size: 0.7rem;
-          color: #64748b;
-          text-transform: uppercase;
-          font-weight: 600;
-          display: block;
-        }
-
-        .stat-value {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: #0f172a;
-          display: block;
-        }
-
-        .stat-sub {
-          font-size: 0.7rem;
-          color: #94a3b8;
-        }
-
-        .leaflet-map {
-          flex: 1;
-          z-index: 1;
-        }
+      {/* MAPA Y CONTROLES */}
+      <main className="flex-1 flex flex-col relative h-full z-10">
         
-        /* Asegurar que las tiles del mapa se vean bien */
-        .map-tiles {
-          filter: brightness(0.95) contrast(1.05);
-        }
+        {reportes.length > 0 && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[90%] lg:w-[800px] z-[1001] bg-white/90 backdrop-blur-md border border-white p-3 rounded-2xl shadow-2xl flex items-center gap-4">
+            <button 
+              onClick={() => setPlaying(!playing)}
+              className="w-12 h-12 flex items-center justify-center rounded-full bg-blue-600 text-white hover:scale-110 transition-transform shadow-lg"
+            >
+              {playing ? "⏸" : "▶"}
+            </button>
+            
+            <div className="flex-1 flex flex-col gap-1">
+              <input
+                type="range"
+                min="0"
+                max={reportes.length - 1}
+                value={scrubber}
+                onChange={(e) => handleScrubber(e.target.value)}
+                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <div className="flex justify-between text-[10px] text-slate-500 font-bold px-1">
+                <span>{new Date(reportes[0].hora).toLocaleTimeString()}</span>
+                <span className="text-blue-600 bg-blue-50 px-2 rounded-full">{new Date(horaActual).toLocaleTimeString()}</span>
+                <span>{new Date(reportes[reportes.length - 1].hora).toLocaleTimeString()}</span>
+              </div>
+            </div>
 
-        .popup-content h4 {
-          margin: 0 0 0.5rem 0;
-          font-size: 0.875rem;
-          color: #1e293b;
-        }
+            <div className="hidden sm:flex items-center gap-3 bg-slate-100 px-3 py-2 rounded-xl">
+              <span className="text-xs font-bold text-slate-400">{velocidadSim}x</span>
+              <input
+                type="range" min="1" max="500" value={velocidadSim}
+                onChange={(e) => setVelocidadSim(Number(e.target.value))}
+                className="w-20 accent-blue-600"
+              />
+            </div>
+          </div>
+        )}
 
-        .popup-content div {
-          font-size: 0.75rem;
-          margin: 0.25rem 0;
-        }
+        <div className="w-full h-full relative z-0">
+          <MapContainer 
+            center={[-43.2, -73.6]} 
+            zoom={10} 
+            className="w-full h-full"
+            style={{ background: "#f8fafc", zIndex: 0 }}
+          >
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" className="grayscale-[20%]" />
+            
+            <CenterOnFirstPoint puntos={reportes} />
 
-        .boat-tooltip {
-          background: rgba(0,0,0,0.8);
-          color: white;
-          padding: 0.25rem 0.5rem;
-          border-radius: 4px;
-          font-size: 0.7rem;
-          white-space: nowrap;
-        }
+            {/* PUNTOS DE LA RUTA (MARKERS INTERACTIVOS) */}
+            {reportes.map((p, i) => (
+              <Marker 
+                key={`${p.id || i}`} 
+                position={[p.lat, p.lon]} 
+                icon={createDotIcon(p.velocidad)}
+              >
+                <Popup className="custom-popup">
+                  <div className="min-w-[180px] p-1">
+                    <div className="border-b border-slate-100 pb-2 mb-2">
+                      <h4 className="font-black text-blue-600 text-sm leading-none">{naveSeleccionada?.nombre}</h4>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Reporte de Posición</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Fecha:</span>
+                        <span className="font-bold text-slate-700">{new Date(p.hora).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Hora:</span>
+                        <span className="font-bold text-slate-700">{new Date(p.hora).toLocaleTimeString()}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Velocidad:</span>
+                        <span className="font-bold text-green-600">{p.velocidad.toFixed(1)} nudos</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Rumbo:</span>
+                        <span className="font-bold text-slate-700">{p.rumbo}°</span>
+                      </div>
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
 
-        @media (max-width: 768px) {
-          .control-panel {
-            padding: 0.75rem;
-            gap: 0.5rem;
-          }
-          
-          .stats-panel {
-            bottom: 10px;
-            right: 10px;
-            padding: 0.75rem;
-            min-width: 150px;
-          }
-          
-          .boat-info {
-            display: none;
-          }
+            {/* Líneas de conexión */}
+            {reportes.length > 1 && (
+              <Polyline 
+                positions={reportes.map(p => [p.lat, p.lon])} 
+                color="#64748b" 
+                weight={2} 
+                opacity={0.3} 
+                dashArray="5, 10" 
+              />
+            )}
+
+            {/* Ruta Activa */}
+            {rutaDibujada.length > 0 && (
+              <Polyline positions={rutaDibujada} color={naveSeleccionada?.color} weight={4} />
+            )}
+
+            {/* Barco Animado */}
+            {posAnimada && (
+              <Marker position={posAnimada} icon={createBoatIcon(currentData.rumbo)} zIndexOffset={1000}>
+                <Tooltip permanent direction="top" offset={[0, -20]} className="!bg-slate-900 !border-0 !shadow-2xl !rounded-lg">
+                  <div className="text-white p-1 text-center">
+                    <div className="font-bold text-xs">{naveSeleccionada?.nombre}</div>
+                    <div className="text-[9px] text-blue-300 font-black">{currentData.velocidad.toFixed(1)} KN</div>
+                  </div>
+                </Tooltip>
+              </Marker>
+            )}
+          </MapContainer>
+        </div>
+      </main>
+      <style>{`
+        .leaflet-container { z-index: 0 !important; }
+        .custom-popup .leaflet-popup-content-wrapper {
+          border-radius: 12px;
+          padding: 4px;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
+        .custom-popup .leaflet-popup-tip { background: white; }
       `}</style>
     </div>
   );

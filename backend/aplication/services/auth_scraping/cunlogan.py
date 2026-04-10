@@ -24,7 +24,7 @@ USER_AGENTS = [
 async def get_random_ua():
     return random.choice(USER_AGENTS)
 
-async def login_cunlogan(force_login=False):
+async def login_cunlogan(force_login=True):
     cookies = None
     if not force_login:
         cookies = get_cookies(CL_COOKIES)

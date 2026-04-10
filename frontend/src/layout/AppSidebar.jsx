@@ -51,8 +51,8 @@ const othersItems = [
     path: "/posat-naves",
     //permission: "aplication.view_posatnaves",
     subItems: [
-      { name: "Mapa normal", path: "/posat-naves", pro: false },
-      { name: "Reporte mapa", path: "/posat-naves-map", pro: false },
+      { name: "Ver en tiempo real", path: "/posat-naves", pro: false },
+      { name: "Horas navegadas", path: "/posat-naves-map", pro: false },
     ],
   },
 ];

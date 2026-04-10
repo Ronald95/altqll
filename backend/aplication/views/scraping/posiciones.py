@@ -17,6 +17,7 @@ async def posat_naves(request):
     Vista asíncrona que consolida posiciones de naves desde Marimsys y Cunlogan.
     """
     try:
+        print("🚀 POSAT iniciado")
         logger.info("🚀 POSAT iniciado")
 
         # 🔐 LOGIN
